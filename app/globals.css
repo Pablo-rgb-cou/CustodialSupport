@@ -1,0 +1,447 @@
+@import "tailwindcss";
+
+:root {
+  --background: #070b14;
+  --foreground: #f5f7fb;
+
+  --surface: #0b1220;
+  --surface-light: #101b2b;
+
+  --accent: #65f5d0;
+  --accent-bright: #8bffdf;
+
+  --muted: #94a3b8;
+  --border: rgba(148, 163, 184, 0.16);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Base reset */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 100px;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+
+  background: var(--background);
+  color: var(--foreground);
+
+  font-family: Arial, Helvetica, sans-serif;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Text selection */
+
+::selection {
+  background: rgba(101, 245, 208, 0.28);
+  color: #ffffff;
+}
+
+/* Links */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Premium background atmosphere */
+
+.site-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+
+  overflow: hidden;
+  pointer-events: none;
+
+  background:
+    radial-gradient(
+      ellipse at 15% 5%,
+      rgba(24, 72, 111, 0.24),
+      transparent 38%
+    ),
+    radial-gradient(
+      ellipse at 90% 45%,
+      rgba(0, 180, 170, 0.10),
+      transparent 34%
+    ),
+    #070b14;
+}
+
+/* Technical grid */
+
+.hero-grid {
+  position: relative;
+  isolation: isolate;
+}
+
+.hero-grid::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+
+  content: "";
+
+  background-image:
+    linear-gradient(
+      rgba(148, 163, 184, 0.055) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(148, 163, 184, 0.055) 1px,
+      transparent 1px
+    );
+
+  background-size: 70px 70px;
+
+  mask-image: linear-gradient(
+    to bottom,
+    black 0%,
+    rgba(0, 0, 0, 0.8) 60%,
+    transparent 100%
+  );
+
+  pointer-events: none;
+}
+
+/* Soft teal lighting */
+
+.hero-glow {
+  position: absolute;
+  z-index: -1;
+
+  width: 380px;
+  height: 380px;
+
+  border-radius: 50%;
+
+  background: rgba(48, 226, 195, 0.10);
+
+  filter: blur(110px);
+
+  pointer-events: none;
+}
+
+/* Gradient text */
+
+.text-gradient {
+  background: linear-gradient(
+    100deg,
+    #ffffff 0%,
+    #c9fff1 48%,
+    #65f5d0 100%
+  );
+
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  color: transparent;
+}
+
+/* Glass surfaces */
+
+.glass-panel {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+
+  background: linear-gradient(
+    145deg,
+    rgba(19, 32, 49, 0.82),
+    rgba(9, 17, 30, 0.92)
+  );
+
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Interactive cards */
+
+.interactive-card {
+  transition:
+    transform 250ms ease,
+    border-color 250ms ease,
+    background-color 250ms ease,
+    box-shadow 250ms ease;
+}
+
+.interactive-card:hover {
+  transform: translateY(-6px);
+
+  border-color: rgba(101, 245, 208, 0.42);
+
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.18),
+    0 0 24px rgba(101, 245, 208, 0.035);
+}
+
+/* Buttons */
+
+.button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  border: 1px solid transparent;
+  border-radius: 12px;
+
+  background: linear-gradient(
+    115deg,
+    #65f5d0,
+    #9bffe5
+  );
+
+  color: #07131a;
+
+  font-weight: 600;
+
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease,
+    filter 200ms ease;
+}
+
+.button-primary:hover {
+  transform: translateY(-2px);
+
+  box-shadow: 0 10px 30px rgba(101, 245, 208, 0.16);
+
+  filter: brightness(1.05);
+}
+
+.button-primary:active {
+  transform: translateY(0);
+}
+
+/* Keyboard accessibility */
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* Responsive mobile adjustments */
+
+@media (max-width: 640px) {
+  html {
+    scroll-padding-top: 80px;
+  }
+
+  body {
+    overflow-wrap: break-word;
+  }
+
+  .hero-grid::before {
+    background-size: 42px 42px;
+  }
+
+  .hero-glow {
+    width: 240px;
+    height: 240px;
+    filter: blur(75px);
+  }
+
+  /* Prevent SVG illustrations from exceeding their containers */
+  svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Keep hover effects from moving cards on touch devices */
+  .interactive-card:hover {
+    transform: none;
+  }
+}
+
+/* Extra-small phones, including iPhone SE */
+@media (max-width: 380px) {
+  h1 {
+    overflow-wrap: normal;
+  }
+}
+
+/* Respect reduced-motion preferences */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =========================================
+   HERO SECTION — PREMIUM ANIMATIONS
+========================================= */
+
+/* 1. Gentle floating illustration */
+
+@keyframes heroFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.hero-illustration-float {
+  animation: heroFloat 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+
+/* 2. Support status card movement */
+
+@keyframes statusFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.hero-status-float {
+  animation: statusFloat 5s ease-in-out infinite;
+}
+
+
+/* 3. Soft cyan glow */
+
+@keyframes heroGlowPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.55;
+    transform: scale(1.06);
+  }
+}
+
+.hero-ambient-glow {
+  position: absolute;
+
+  width: 320px;
+  height: 320px;
+
+  border-radius: 50%;
+
+  background: radial-gradient(
+    circle,
+    rgba(101, 245, 208, 0.16),
+    transparent 70%
+  );
+
+  filter: blur(45px);
+
+  animation: heroGlowPulse 8s ease-in-out infinite;
+
+  pointer-events: none;
+}
+
+
+/* 4. Hero button interactions */
+
+.hero-button-primary {
+  transition:
+    transform 250ms ease,
+    box-shadow 250ms ease,
+    filter 250ms ease;
+}
+
+.hero-button-primary:hover {
+  transform: translateY(-3px);
+
+  box-shadow:
+    0 12px 35px rgba(101, 245, 208, 0.18);
+
+  filter: brightness(1.06);
+}
+
+.hero-button-primary:active {
+  transform: translateY(0);
+}
+
+
+/* 5. Secondary button */
+
+.hero-button-secondary {
+  transition:
+    transform 250ms ease,
+    border-color 250ms ease,
+    background-color 250ms ease,
+    box-shadow 250ms ease;
+}
+
+.hero-button-secondary:hover {
+  transform: translateY(-3px);
+
+  border-color: rgba(101, 245, 208, 0.45);
+
+  background-color: rgba(101, 245, 208, 0.06);
+
+  box-shadow:
+    0 8px 25px rgba(101, 245, 208, 0.05);
+}
+
+
+/* 6. Accessibility */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-illustration-float,
+  .hero-status-float,
+  .hero-ambient-glow {
+    animation: none !important;
+  }
+
+  .hero-button-primary,
+  .hero-button-secondary {
+    transition: none !important;
+  }
+}
+
+.hero-ambient-glow {
+  left: 50%;
+  top: 50%;
+  margin-left: -160px;
+  margin-top: -160px;
+}
+
+@media (max-width: 640px) {
+  .hero-ambient-glow {
+    width: 220px;
+    height: 220px;
+    margin-left: -110px;
+    margin-top: -110px;
+    filter: blur(35px);
+  }
+}
