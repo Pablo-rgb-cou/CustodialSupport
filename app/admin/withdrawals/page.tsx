@@ -22,6 +22,7 @@ type WithdrawalRecord = {
   currency: string;
   crypto_asset: string | null;
   crypto_amount: number | null;
+  wallet_address: string | null;
   status: WithdrawalStatus;
   transaction_reference: string | null;
   created_at: string;
@@ -83,6 +84,7 @@ const [currency, setCurrency] = useState("USD");
 
 const [cryptoAsset, setCryptoAsset] = useState("BTC");
 const [cryptoAmount, setCryptoAmount] = useState("");
+const [walletAddress, setWalletAddress] = useState("");
   const [status, setStatus] =
     useState<WithdrawalStatus>("pending");
   const [reference, setReference] = useState("");
@@ -143,7 +145,7 @@ const [cryptoAmount, setCryptoAmount] = useState("");
         await supabase
           .from("withdrawals")
           .select(
-            "id, client_id, amount, currency, crypto_asset, crypto_amount, status, transaction_reference, created_at, admin_note"
+            "id, client_id, amount, currency, crypto_asset, crypto_amount, wallet_address, status, transaction_reference, created_at, admin_note"
           )
           .order("created_at", { ascending: false });
 
@@ -185,6 +187,22 @@ const [cryptoAmount, setCryptoAmount] = useState("");
 
   useEffect(() => {
     void loadData();
+    const channel = supabase.channel("admin-withdrawals-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "withdrawals" }, (payload) => {
+        const row = (payload.new ?? payload.old) as WithdrawalRecord;
+        if (payload.eventType === "DELETE") setWithdrawals((current) => current.filter((item) => item.id !== row.id));
+        else if (row?.id) void loadData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => { void loadData(); })
+      .subscribe((status) => { if (status === "SUBSCRIBED") void loadData(); });
+    const refresh = () => { if (document.visibilityState === "visible") void loadData(); };
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      void supabase.removeChannel(channel);
+    };
   }, [loadData]);
 
   const filteredWithdrawals = useMemo(() => {
@@ -197,6 +215,7 @@ const [cryptoAmount, setCryptoAmount] = useState("");
         (item.transaction_reference ?? "")
           .toLowerCase()
           .includes(query) ||
+        (item.wallet_address ?? "").toLowerCase().includes(query) ||
         item.client_id.toLowerCase().includes(query);
 
       const matchesStatus =
@@ -291,6 +310,7 @@ if (
           currency,
           crypto_asset: cryptoAsset,
           crypto_amount: numericCryptoAmount,
+          wallet_address: walletAddress.trim() || null,
           status,
           transaction_reference: reference.trim() || null,
           admin_note: adminNote.trim() || null,
@@ -311,6 +331,7 @@ if (
       setCurrency("USD");
       setCryptoAsset("BTC");
       setCryptoAmount("");
+      setWalletAddress("");
       setStatus("pending");
       setReference("");
       setAdminNote("");
@@ -553,6 +574,18 @@ if (
               />
             </label>
 
+            <label className="space-y-2 text-sm text-slate-300 sm:col-span-2">
+              <span>Wallet address (optional)</span>
+              <input
+                value={walletAddress}
+                onChange={(event) => setWalletAddress(event.target.value)}
+                maxLength={200}
+                autoComplete="off"
+                className="w-full rounded-xl border border-white/10 bg-[#04101d] px-3.5 py-3 font-mono text-white outline-none placeholder:text-slate-600 focus:border-cyan-300/40"
+                placeholder="Enter the destination wallet address"
+              />
+            </label>
+
             <label className="space-y-2 text-sm text-slate-300">
               <span>Currency</span>
               <select
@@ -737,12 +770,13 @@ if (
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[950px] text-left text-sm">
+            <table className="w-full min-w-[1160px] text-left text-sm">
               <thead className="bg-white/[0.025] text-xs uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-5 py-4 font-medium">Client</th>
                   <th className="px-5 py-4 font-medium">Withdrawal ID</th>
                   <th className="px-5 py-4 font-medium">Amount</th>
+                  <th className="px-5 py-4 font-medium">Wallet address</th>
                   <th className="px-5 py-4 font-medium">Date created</th>
                   <th className="px-5 py-4 font-medium">Status</th>
                   <th className="px-5 py-4 font-medium">Update status</th>
@@ -783,6 +817,16 @@ if (
                         <p className="mt-1 text-xs text-slate-500">
                           Crypto details unavailable
                         </p>
+                      )}
+                    </td>
+
+                    <td className="max-w-[260px] px-5 py-4 font-mono text-xs text-slate-400">
+                      {item.wallet_address ? (
+                        <span className="break-all" title={item.wallet_address}>
+                          {item.wallet_address}
+                        </span>
+                      ) : (
+                        <span className="text-slate-600">Not provided</span>
                       )}
                     </td>
 

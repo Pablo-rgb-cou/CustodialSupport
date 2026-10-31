@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 const services = [
@@ -26,6 +26,162 @@ const services = [
       "Get help finding answers and navigating your support options.",
   },
 ];
+
+type DemoTestimonial = {
+  id: number;
+  name: string;
+  initials: string;
+  message: string;
+  rating: number;
+};
+
+const demoTestimonials: Omit<DemoTestimonial, "id">[] = [
+  {
+    name: "Megan Roberts",
+    initials: "MR",
+    message: "The follow-up helped me make sense of the account security steps I should follow. I appreciate the courteous support.",
+    rating: 4,
+  },
+  {
+    name: "Lucas Harris",
+    initials: "LH",
+    message: "I valued the straightforward communication about the steps for tracking a request. That made the process easier to understand.",
+    rating: 4,
+  },
+  {
+    name: "Karen Hall",
+    initials: "KH",
+    message: "I was glad to receive a clear update regarding the information available about my request. Thank you for taking the time to respond.",
+    rating: 5,
+  },
+  {
+    name: "Ava Mitchell",
+    initials: "AM",
+    message: "The team explained what information to check next and made the support process easy to follow.",
+    rating: 5,
+  },
+  {
+    name: "Daniel Wright",
+    initials: "DW",
+    message: "I received a helpful status update and a clear explanation of the next steps for my request.",
+    rating: 4,
+  },
+  {
+    name: "Olivia Carter",
+    initials: "OC",
+    message: "The response was courteous and practical. I appreciated having the details laid out clearly.",
+    rating: 5,
+  },
+];
+
+function CustomerFeedbackCard() {
+  const [testimonials, setTestimonials] = useState<DemoTestimonial[]>([]);
+  const [counter, setCounter] = useState(1);
+  const nextId = useRef(4);
+
+  useEffect(() => {
+    const makeTestimonial = (id: number): DemoTestimonial => ({
+      ...demoTestimonials[(id - 1) % demoTestimonials.length],
+      id,
+    });
+
+    setTestimonials([1, 2, 3].map(makeTestimonial));
+    nextId.current = 4;
+
+    const testimonialTimer = window.setInterval(() => {
+      const newTestimonial = makeTestimonial(nextId.current++);
+      setTestimonials((current) => [newTestimonial, ...current].slice(0, 3));
+      setCounter((current) => current + 1);
+    }, 10000);
+
+    return () => window.clearInterval(testimonialTimer);
+  }, []);
+
+  return (
+    <section className="min-w-0 overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#0c2238] via-[#081a2c] to-[#061321] shadow-[0_16px_44px_rgba(0,0,0,0.20)]">
+      <div className="flex items-start justify-between gap-4 border-b border-white/[0.07] p-5 sm:p-6">
+        <div>
+          <h3 className="font-semibold text-white">Customer feedback</h3>
+        </div>
+        <span
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-200 shadow-[0_0_20px_rgba(34,211,238,0.08)]"
+          aria-hidden="true"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="h-5 w-5"
+          >
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z"
+            />
+            <path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z" />
+          </svg>
+        </span>
+      </div>
+
+      <div
+        aria-live="polite"
+        className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3"
+      >
+        {testimonials.map((testimonial, index) => (
+          <article
+            key={testimonial.id}
+            className={`relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-br from-[#102a46] via-[#0a1c31] to-[#071321] p-4 shadow-[0_14px_36px_rgba(0,0,0,0.2)] transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/20 ${
+              index === 0 ? "animate-[testimonial-in_450ms_ease-out]" : ""
+            }`}
+          >
+            <span aria-hidden="true" className="pointer-events-none absolute -right-1 -top-5 select-none font-serif text-7xl leading-none text-cyan-300/[0.06]">“</span>
+            <div className="relative flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div
+                  aria-hidden="true"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-xs font-semibold text-cyan-200"
+                >
+                  {testimonial.initials}
+                </div>
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-semibold text-white">
+                    {testimonial.name}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="mt-4 text-sm tracking-[0.12em] text-amber-300"
+              aria-label={`${testimonial.rating} out of 5 sample stars`}
+            >
+              {"★".repeat(testimonial.rating)}
+              <span className="text-slate-600">
+                {"★".repeat(5 - testimonial.rating)}
+              </span>
+            </div>
+
+            <blockquote className="mt-3 flex-1 text-sm leading-6 text-slate-300">
+              “{testimonial.message}”
+            </blockquote>
+          </article>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 border-t border-white/[0.07] px-5 py-4 sm:px-6">
+        <span className="ml-auto shrink-0 text-xs text-cyan-200">
+          {counter} new reviews
+        </span>
+      </div>
+      <style jsx>{`
+        @keyframes testimonial-in {
+          from { opacity: 0; transform: translateY(-12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </section>
+  );
+}
 
 function SupportIllustration() {
   return (
@@ -239,6 +395,39 @@ function SupportOrbit() {
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const bodyOverflow = document.body.style.overflow;
+    const htmlOverflow = document.documentElement.style.overflow;
+    const desktopViewport = window.matchMedia("(min-width: 768px)");
+    const restorePageScroll = () => {
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = htmlOverflow;
+    };
+    const handleViewportChange = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        restorePageScroll();
+        setMenuOpen(false);
+      } else {
+        document.body.style.overflow = "hidden";
+        document.documentElement.style.overflow = "hidden";
+      }
+    };
+
+    if (!desktopViewport.matches) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    }
+    desktopViewport.addEventListener("change", handleViewportChange);
+
+    return () => {
+      desktopViewport.removeEventListener("change", handleViewportChange);
+      restorePageScroll();
+    };
+  }, [menuOpen]);
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#070B14] text-white">
       {/* Background atmosphere */}
@@ -255,7 +444,7 @@ export default function Home() {
 
       {/* Navigation */}
 
-      <header className="relative z-20 border-b border-white/[0.08] bg-[#070b14]/75 backdrop-blur-xl">
+      <header className={`relative border-b border-white/[0.08] bg-[#070b14]/75 backdrop-blur-xl ${menuOpen ? "z-[60]" : "z-20"}`}>
         <nav className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 sm:py-4 lg:px-10 lg:py-5">
 
 
@@ -330,7 +519,7 @@ export default function Home() {
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={menuOpen}
-            aria-controls="mobile-navigation"
+            aria-controls={menuOpen ? "mobile-navigation" : undefined}
             className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-white/[0.04] text-cyan-300 transition hover:border-cyan-300/50 hover:bg-cyan-300/10 md:hidden"
           >
             {menuOpen ? (
@@ -367,21 +556,25 @@ export default function Home() {
         </nav>
 
         
-        {/* Mobile navigation dropdown */}
-        <div
-          id="mobile-navigation"
-          className={`md:hidden px-3 transition-all duration-300 ${
-            menuOpen
-              ? "visible max-h-96 pb-4 opacity-100"
-              : "invisible max-h-0 overflow-hidden pb-0 opacity-0"
-          }`}
-          aria-hidden={!menuOpen}
-        >
-          <div className="rounded-2xl border border-white/10 bg-[#0b1220] p-3 shadow-xl shadow-black/20">
+      </header>
+
+      {/* Keep the mobile menu attached to the viewport while the page is locked. */}
+      {menuOpen && (
+        <>
+          <button
+            type="button"
+            aria-label="Close navigation menu"
+            onClick={() => setMenuOpen(false)}
+            className="fixed inset-0 z-40 bg-black/55 md:hidden"
+          />
+          <nav
+            id="mobile-navigation"
+            aria-label="Mobile navigation"
+            className="fixed left-3 right-3 top-[5.5rem] z-50 max-h-[calc(100dvh-6.5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-[#0b1220]/[0.98] p-3 shadow-2xl shadow-black/40 backdrop-blur-2xl md:hidden"
+          >
             <Link
               href="/services"
               onClick={() => setMenuOpen(false)}
-              tabIndex={menuOpen ? 0 : -1}
               className="flex min-h-12 items-center justify-between rounded-xl px-4 py-3.5 text-sm text-slate-300 transition hover:bg-cyan-300/10 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-300"
             >
               Services <span aria-hidden="true">↗</span>
@@ -389,7 +582,6 @@ export default function Home() {
             <Link
               href="/about"
               onClick={() => setMenuOpen(false)}
-              tabIndex={menuOpen ? 0 : -1}
               className="flex min-h-12 items-center justify-between rounded-xl px-4 py-3.5 text-sm text-slate-300 transition hover:bg-cyan-300/10 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-300"
             >
               About <span aria-hidden="true">↗</span>
@@ -397,7 +589,6 @@ export default function Home() {
             <Link
               href="/contact"
               onClick={() => setMenuOpen(false)}
-              tabIndex={menuOpen ? 0 : -1}
               className="flex min-h-12 items-center justify-between rounded-xl px-4 py-3.5 text-sm text-slate-300 transition hover:bg-cyan-300/10 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-300"
             >
               Contact <span aria-hidden="true">↗</span>
@@ -407,7 +598,6 @@ export default function Home() {
               <Link
                 href="/login"
                 onClick={() => setMenuOpen(false)}
-                tabIndex={menuOpen ? 0 : -1}
                 className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/15 bg-white/[0.03] px-3 py-3 text-sm font-semibold text-slate-200 transition hover:border-cyan-300/40 hover:bg-cyan-300/[0.08] hover:text-cyan-200 focus-visible:outline-2 focus-visible:outline-cyan-300"
               >
                 Log in
@@ -415,16 +605,14 @@ export default function Home() {
               <Link
                 href="/signup"
                 onClick={() => setMenuOpen(false)}
-                tabIndex={menuOpen ? 0 : -1}
                 className="inline-flex min-h-11 items-center justify-center rounded-xl border border-cyan-200/20 bg-cyan-300 px-3 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 focus-visible:outline-2 focus-visible:outline-cyan-300"
               >
                 Sign up
               </Link>
             </div>
-          </div>
-        </div>
-
-      </header>
+          </nav>
+        </>
+      )}
 
 
       {/* Hero: illustration fills the space before the heading */}
@@ -779,6 +967,12 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Customer feedback sits between the illustration and support categories. */}
+      <section className="px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
+        <div className="mx-auto max-w-7xl">
+          <CustomerFeedbackCard />
+        </div>
+      </section>
 
       {/* Services */}
 

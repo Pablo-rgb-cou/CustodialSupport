@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type TicketStatus =
@@ -42,6 +42,32 @@ type TicketMessage = {
   senderName: string;
 };
 
+type ParsedTicketMessage = { text: string; photoPath?: string };
+const ticketPhotoPrefix = "CS_TICKET_PHOTO_V1:";
+
+function parseTicketMessage(value: string): ParsedTicketMessage {
+  if (!value.startsWith(ticketPhotoPrefix)) return { text: value };
+
+  try {
+    const parsed = JSON.parse(value.slice(ticketPhotoPrefix.length)) as {
+      version?: unknown;
+      text?: unknown;
+      photoPath?: unknown;
+    };
+    if (
+      parsed.version === 1 &&
+      typeof parsed.text === "string" &&
+      typeof parsed.photoPath === "string"
+    ) {
+      return { text: parsed.text, photoPath: parsed.photoPath };
+    }
+  } catch {
+    // Keep malformed or legacy content readable as ordinary message text.
+  }
+
+  return { text: value };
+}
+
 const statusLabels: Record<TicketStatus, string> = {
   open: "Open",
   in_progress: "In progress",
@@ -71,10 +97,20 @@ const priorityStyles: Record<TicketPriority, string> = {
 const inputClass =
   "w-full rounded-xl border border-white/10 bg-[#04101d] px-3.5 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-300/40";
 
+function formatChatTime(value: string) {
+  return new Date(value).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function AdminTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [unreadByTicket, setUnreadByTicket] = useState<Record<string, number>>({});
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
+  const [ticketPhotoUrls, setTicketPhotoUrls] = useState<Record<string, string | null>>({});
+  const [currentAdminId, setCurrentAdminId] = useState("");
 
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(
     null
@@ -97,9 +133,36 @@ export default function AdminTicketsPage() {
 
   const selectedTicket =
     tickets.find((ticket) => ticket.id === selectedTicketId) ?? null;
+  const selectedTicketRef = useRef<Ticket | null>(null);
+  const selectedTicketDetailsRef = useRef<HTMLDivElement | null>(null);
+  const loadMessagesRef = useRef<(ticket: Ticket) => Promise<void>>(async () => {});
 
-  const loadTickets = useCallback(async () => {
-    setLoading(true);
+  const markTicketRead = useCallback((ticketId: string) => {
+    if (!currentAdminId) return;
+    try {
+      localStorage.setItem(
+        `custodialsupport:admin-ticket-read:${currentAdminId}:${ticketId}`,
+        new Date().toISOString()
+      );
+    } catch {
+      // The selected ticket still opens if browser storage is unavailable.
+    }
+    setUnreadByTicket((current) => {
+      if (!current[ticketId]) return current;
+      const next = { ...current };
+      delete next[ticketId];
+      return next;
+    });
+  }, [currentAdminId]);
+
+  const openTicket = useCallback((ticketId: string) => {
+    selectedTicketRef.current = tickets.find((ticket) => ticket.id === ticketId) ?? null;
+    setSelectedTicketId(ticketId);
+    markTicketRead(ticketId);
+  }, [markTicketRead, tickets]);
+
+  const loadTickets = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError("");
 
     try {
@@ -112,6 +175,8 @@ export default function AdminTicketsPage() {
         throw new Error("Please sign in again to access support tickets.");
       }
 
+      setCurrentAdminId(user.id);
+
       const { data: ownProfile, error: roleError } = await supabase
         .from("profiles")
         .select("id, role")
@@ -120,6 +185,17 @@ export default function AdminTicketsPage() {
 
       if (roleError || ownProfile?.role !== "admin") {
         throw new Error("Administrator access is required.");
+      }
+
+      const baselineKey = `custodialsupport:admin-ticket-activity-previous-seen:${user.id}`;
+      let unreadBaseline = "";
+      try {
+        unreadBaseline =
+          localStorage.getItem(baselineKey) ??
+          localStorage.getItem(`custodialsupport:admin-ticket-activity-seen:${user.id}`) ??
+          new Date().toISOString();
+      } catch {
+        unreadBaseline = new Date().toISOString();
       }
 
       const { data: profileData, error: profileError } = await supabase
@@ -162,6 +238,52 @@ export default function AdminTicketsPage() {
         clientName: names.get(ticket.client_id) ?? "Unknown client",
       })) as Ticket[];
 
+      const { data: activityRows, error: activityError } = await supabase
+        .from("ticket_messages")
+        .select("ticket_id, sender_id, is_internal, created_at")
+        .eq("is_internal", false)
+        .neq("sender_id", user.id);
+
+      if (activityError) {
+        console.warn("Could not load per-client unread ticket activity:", activityError.message);
+      } else {
+        const unreadCounts: Record<string, number> = {};
+        const clientMessages = activityRows ?? [];
+
+        for (const ticket of ticketList) {
+          let lastReadAt: string | null = null;
+          try {
+            lastReadAt = localStorage.getItem(
+              `custodialsupport:admin-ticket-read:${user.id}:${ticket.id}`
+            );
+          } catch {
+            // Fall back to the initial baseline if storage is unavailable.
+          }
+
+          const cutoff = lastReadAt ?? unreadBaseline;
+          let unreadCount =
+            !lastReadAt &&
+            new Date(ticket.created_at).getTime() > new Date(unreadBaseline).getTime()
+              ? 1
+              : 0;
+
+          for (const message of clientMessages) {
+            if (
+              message.ticket_id === ticket.id &&
+              message.sender_id !== user.id &&
+              !message.is_internal &&
+              new Date(message.created_at).getTime() > new Date(cutoff).getTime()
+            ) {
+              unreadCount += 1;
+            }
+          }
+
+          if (unreadCount > 0) unreadCounts[ticket.id] = unreadCount;
+        }
+
+        setUnreadByTicket(unreadCounts);
+      }
+
       setProfiles(profileList);
       setTickets(ticketList);
 
@@ -179,7 +301,7 @@ export default function AdminTicketsPage() {
           : "An unexpected error occurred."
       );
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -235,13 +357,120 @@ export default function AdminTicketsPage() {
   }, [loadTickets]);
 
   useEffect(() => {
-    if (!selectedTicket) {
-      setMessages([]);
-      return;
+    selectedTicketRef.current = selectedTicket;
+    loadMessagesRef.current = loadMessages;
+  }, [selectedTicket, loadMessages]);
+
+  useEffect(() => {
+    if (!selectedTicketId) { setMessages([]); return; }
+    const ticket = selectedTicketRef.current;
+    if (ticket) void loadMessagesRef.current(ticket);
+  }, [selectedTicketId]);
+
+  useEffect(() => {
+    let active = true;
+    const photoPaths = Array.from(
+      new Set(
+        messages.flatMap((message) => {
+          const parsed = parseTicketMessage(message.message);
+          return parsed.photoPath?.startsWith(`${message.ticket_id}/`)
+            ? [parsed.photoPath]
+            : [];
+        })
+      )
+    );
+
+    if (photoPaths.length === 0) {
+      setTicketPhotoUrls({});
+      return () => {
+        active = false;
+      };
     }
 
-    void loadMessages(selectedTicket);
-  }, [selectedTicket, loadMessages]);
+    void Promise.all(
+      photoPaths.map(async (path) => {
+        try {
+          const { data, error } = await supabase.storage
+            .from("ticket-attachments")
+            .createSignedUrl(path, 60 * 60);
+          if (error) console.error("Could not create ticket photo link:", error.message);
+          return [path, error ? null : data?.signedUrl ?? null] as const;
+        } catch (error) {
+          console.error("Could not create ticket photo link:", error);
+          return [path, null] as const;
+        }
+      })
+    ).then((entries) => {
+      if (active) setTicketPhotoUrls(Object.fromEntries(entries));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [messages]);
+
+  useEffect(() => {
+    if (!selectedTicketId) return;
+    const frame = window.requestAnimationFrame(() => {
+      selectedTicketDetailsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedTicketId]);
+
+  // Keep one stable list subscription; background updates should not reset loading UI.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      void loadTickets(true);
+      const ticket = selectedTicketRef.current;
+      if (ticket) void loadMessagesRef.current(ticket);
+    };
+    const channel = supabase.channel("admin-support-tickets-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refresh)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "ticket_messages" },
+        (payload) => {
+          const row = payload.new as Partial<TicketMessage>;
+          if (!row.ticket_id || row.sender_id === currentAdminId || row.is_internal) return;
+
+          if (selectedTicketRef.current?.id === row.ticket_id) {
+            markTicketRead(row.ticket_id);
+          }
+          void loadTickets(true);
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void loadTickets(true);
+          const ticket = selectedTicketRef.current;
+          if (ticket) void loadMessagesRef.current(ticket);
+        }
+      });
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      void supabase.removeChannel(channel);
+    };
+  }, [currentAdminId, loadTickets, markTicketRead]);
+
+  useEffect(() => {
+    if (!selectedTicketId) return;
+    const reloadSelectedConversation = () => {
+      const ticket = selectedTicketRef.current;
+      if (ticket?.id === selectedTicketId) void loadMessagesRef.current(ticket);
+    };
+    const channel = supabase.channel("admin-ticket-messages-" + selectedTicketId)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ticket_messages", filter: "ticket_id=eq." + selectedTicketId }, reloadSelectedConversation)
+      .subscribe((status) => { if (status === "SUBSCRIBED") reloadSelectedConversation(); });
+    return () => { void supabase.removeChannel(channel); };
+  }, [selectedTicketId]);
 
   const filteredTickets = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -378,10 +607,19 @@ export default function AdminTicketsPage() {
         );
       }
 
+      const { error: touchTicketError } = await supabase
+        .from("support_tickets")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", selectedTicket.id);
+
+      if (touchTicketError) {
+        console.warn("Reply saved, but ticket timestamp was not updated:", touchTicketError.message);
+      }
+
       setReply("");
       setNotice("Your reply was saved successfully.");
 
-      await loadMessages(selectedTicket);
+      await Promise.all([loadMessages(selectedTicket), loadTickets()]);
     } catch (err) {
       setError(
         err instanceof Error
@@ -485,7 +723,7 @@ export default function AdminTicketsPage() {
         ))}
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <section className="space-y-5">
         <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#071725]/80">
           <div className="space-y-4 border-b border-white/[0.07] p-4 sm:p-5">
             <div>
@@ -540,7 +778,7 @@ export default function AdminTicketsPage() {
             </div>
           </div>
 
-          <div className="max-h-[760px] overflow-y-auto">
+          <div className="max-h-[560px] overflow-auto scrollbar-hide">
             {loading ? (
               <p className="px-5 py-12 text-center text-sm text-slate-400">
                 Loading tickets from Supabase...
@@ -566,81 +804,124 @@ export default function AdminTicketsPage() {
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-white/[0.06]">
-                {filteredTickets.map((ticket) => {
-                  const selected = ticket.id === selectedTicketId;
+              <>
+                <div className="divide-y divide-white/[0.06] sm:hidden">
+                  {filteredTickets.map((ticket) => {
+                    const selected = ticket.id === selectedTicketId;
+                    const unreadCount = unreadByTicket[ticket.id] ?? 0;
 
-                  return (
-                    <button
-                      type="button"
-                      key={ticket.id}
-                      onClick={() => setSelectedTicketId(ticket.id)}
-                      className={`block w-full p-4 text-left transition hover:bg-white/[0.03] sm:p-5 ${
-                        selected ? "bg-cyan-200/[0.06]" : ""
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-white">
+                    return (
+                      <button
+                        type="button"
+                        key={ticket.id}
+                        onClick={() => openTicket(ticket.id)}
+                        aria-pressed={selected}
+                        className={`flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition hover:bg-white/[0.035] ${
+                          selected ? "bg-cyan-200/[0.07]" : ""
+                        }`}
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-white">
                             {ticket.subject}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-400">
-                            {ticket.clientName}
-                          </p>
-                        </div>
-
+                          </span>
+                          <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-slate-400">
+                            <span className="max-w-[150px] truncate">{ticket.clientName}</span>
+                            {unreadCount > 0 && (
+                              <span
+                                title={`${unreadCount} new support ${unreadCount === 1 ? "activity" : "activities"} for ${ticket.clientName}`}
+                                aria-label={`${unreadCount} new support ${unreadCount === 1 ? "activity" : "activities"} for ${ticket.clientName}`}
+                                className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-100"
+                              >
+                                {unreadCount > 99 ? "99+" : unreadCount}
+                              </span>
+                            )}
+                            <span className="text-slate-600">·</span>
+                            <time className="shrink-0 text-slate-500">
+                              {new Date(ticket.created_at).toLocaleDateString()}
+                            </time>
+                          </span>
+                        </span>
                         <span
-                          className={`shrink-0 rounded-full border px-2 py-1 text-[10px] ${
-                            statusStyles[ticket.status]
-                          }`}
+                          className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] ${statusStyles[ticket.status]}`}
                         >
                           {statusLabels[ticket.status]}
                         </span>
-                      </div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                      <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-400">
-                        {ticket.description}
-                      </p>
+                <div className="hidden overflow-x-auto sm:block">
+                  <div className="min-w-[760px]">
+                    <div className="sticky top-0 z-10 grid grid-cols-[minmax(220px,2fr)_minmax(130px,1fr)_minmax(125px,.9fr)_minmax(90px,.7fr)_minmax(100px,.7fr)] gap-4 border-b border-white/[0.07] bg-[#081a2a] px-5 py-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      <span>Ticket</span>
+                      <span>Client</span>
+                      <span>Status</span>
+                      <span>Priority</span>
+                      <span>Submitted</span>
+                    </div>
+                    <div className="divide-y divide-white/[0.06]">
+                      {filteredTickets.map((ticket) => {
+                        const selected = ticket.id === selectedTicketId;
+                        const unreadCount = unreadByTicket[ticket.id] ?? 0;
 
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                        <span
-                          className={`text-xs font-medium ${
-                            priorityStyles[ticket.priority]
-                          }`}
-                        >
-                          {ticket.priority.toUpperCase()} PRIORITY
-                        </span>
-
-                        <span className="text-xs text-slate-500">
-                          {new Date(ticket.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                        return (
+                          <button
+                            type="button"
+                            key={ticket.id}
+                            onClick={() => openTicket(ticket.id)}
+                            aria-pressed={selected}
+                            className={`grid w-full grid-cols-[minmax(220px,2fr)_minmax(130px,1fr)_minmax(125px,.9fr)_minmax(90px,.7fr)_minmax(100px,.7fr)] items-center gap-4 px-5 py-4 text-left transition hover:bg-white/[0.035] ${selected ? "bg-cyan-200/[0.07]" : ""}`}
+                          >
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-medium text-white">
+                                {ticket.subject}
+                              </span>
+                              <span className="mt-1 block truncate text-[11px] text-slate-500">
+                                {ticket.category} · {ticket.id.slice(0, 8)}
+                              </span>
+                            </span>
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span className="truncate text-sm text-slate-300">
+                                {ticket.clientName}
+                              </span>
+                              {unreadCount > 0 && (
+                                <span
+                                  title={`${unreadCount} new support ${unreadCount === 1 ? "activity" : "activities"} for ${ticket.clientName}`}
+                                  aria-label={`${unreadCount} new support ${unreadCount === 1 ? "activity" : "activities"} for ${ticket.clientName}`}
+                                  className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-100"
+                                >
+                                  {unreadCount > 99 ? "99+" : unreadCount}
+                                </span>
+                              )}
+                            </span>
+                            <span>
+                              <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] ${statusStyles[ticket.status]}`}>
+                                {statusLabels[ticket.status]}
+                              </span>
+                            </span>
+                            <span className={`text-xs font-medium ${priorityStyles[ticket.priority]}`}>
+                              {ticket.priority}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {new Date(ticket.created_at).toLocaleDateString()}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>
 
-        <div className="min-w-0 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#071725]/80">
-          {!selectedTicket ? (
-            <div className="grid min-h-[420px] place-items-center p-8 text-center">
-              <div>
-                <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/[0.03] text-2xl text-slate-400">
-                  ↗
-                </div>
-                <h2 className="mt-4 font-semibold text-white">
-                  Ticket details
-                </h2>
-                <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-slate-400">
-                  Select a ticket from the list to view its details and
-                  conversation.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <>
+        {selectedTicket && (
+          <div
+            ref={selectedTicketDetailsRef}
+            className="min-w-0 scroll-mt-24 overflow-hidden rounded-2xl border border-cyan-300/15 bg-[#071725]/90 shadow-xl shadow-black/20"
+          >
               <div className="space-y-4 border-b border-white/[0.07] p-5">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-cyan-200">
@@ -714,82 +995,142 @@ export default function AdminTicketsPage() {
                 </p>
               </div>
 
-              <div className="p-5">
-                <h3 className="font-semibold text-white">Conversation</h3>
+              <section className="m-5 rounded-xl border border-cyan-300/15 bg-[#071725]/70 p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-white">Ticket conversation</h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {selectedTicket.subject}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void loadMessages(selectedTicket)}
+                    className="text-xs text-cyan-200 hover:text-cyan-100"
+                  >
+                    Refresh conversation
+                  </button>
+                </div>
 
                 {loadingMessages ? (
-                  <p className="py-8 text-sm text-slate-400">
+                  <p className="py-6 text-sm text-slate-400">
                     Loading conversation...
                   </p>
                 ) : messages.length === 0 ? (
-                  <p className="py-8 text-sm leading-6 text-slate-400">
-                    No messages have been recorded for this ticket yet.
+                  <p className="py-6 text-sm text-slate-400">
+                    No replies yet. You can send a message to the client below.
                   </p>
                 ) : (
-                  <div className="mt-4 space-y-4">
-                    {messages.map((message) => (
-                      <article
-                        key={message.id}
-                        className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-medium text-cyan-100">
-                            {message.senderName}
-                            {message.sender_id ===
-                              selectedTicket.assigned_admin_id && (
-                              <span className="ml-2 text-xs text-slate-500">
-                                Assigned admin
-                              </span>
+                  <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto scrollbar-hide">
+                    {messages.map((message) => {
+                      const isAdminMessage = message.sender_id === currentAdminId;
+                      const content = parseTicketMessage(message.message);
+                      const photoBelongsToTicket = content.photoPath?.startsWith(
+                        `${message.ticket_id}/`
+                      ) ?? false;
+                      const photoUrl = content.photoPath
+                        ? ticketPhotoUrls[content.photoPath]
+                        : undefined;
+
+                      return (
+                        <div
+                          key={message.id}
+                          className={`flex ${isAdminMessage ? "justify-end" : "justify-start"}`}
+                        >
+                          <article
+                            className={`w-fit max-w-[96%] rounded-2xl border px-3.5 pb-2.5 pt-2 shadow-sm sm:max-w-[42rem] ${
+                              isAdminMessage
+                                ? "rounded-br-md border-sky-300/20 bg-[#24527a]"
+                                : "rounded-bl-md border-white/[0.07] bg-[#142334]"
+                            }`}
+                          >
+                            <div className="mb-0.5 flex items-center justify-between gap-4">
+                              <p className={`text-[10px] font-semibold ${isAdminMessage ? "text-sky-200" : "text-emerald-200"}`}>
+                                {isAdminMessage ? "You" : message.senderName}
+                                {message.sender_id === selectedTicket.assigned_admin_id &&
+                                  !isAdminMessage && (
+                                    <span className="ml-2 text-xs text-slate-500">
+                                      Assigned admin
+                                    </span>
+                                  )}
+                              </p>
+                            </div>
+                            {content.text && (
+                              <p className="whitespace-pre-wrap break-words text-sm leading-5 text-slate-100 [overflow-wrap:anywhere]">
+                                {content.text}
+                                {!content.photoPath && (
+                                  <time className="float-right ml-2 mt-1 whitespace-nowrap text-[10px] leading-4 text-slate-300/70">
+                                    {formatChatTime(message.created_at)}
+                                  </time>
+                                )}
+                              </p>
                             )}
-                          </p>
-
-                          <time className="text-xs text-slate-500">
-                            {new Date(
-                              message.created_at
-                            ).toLocaleString()}
-                          </time>
+                            {content.photoPath && (
+                              !photoBelongsToTicket ? (
+                                <p className="mt-2 text-xs text-slate-400">
+                                  This photo is unavailable.
+                                </p>
+                              ) : photoUrl ? (
+                                <a
+                                  href={photoUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="mt-2 block overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                                  aria-label="Open attached photo in a new tab"
+                                >
+                                  <img
+                                    src={photoUrl}
+                                    alt={`Photo attached by ${isAdminMessage ? "you" : message.senderName}`}
+                                    loading="lazy"
+                                    className="max-h-72 w-auto max-w-full rounded-xl object-contain"
+                                  />
+                                </a>
+                              ) : content.photoPath in ticketPhotoUrls ? (
+                                <p className="mt-2 text-xs text-slate-400">
+                                  This photo is unavailable.
+                                </p>
+                              ) : (
+                                <p className="mt-2 text-xs text-slate-400">
+                                  Loading attached photo…
+                                </p>
+                              )
+                            )}
+                            {(!content.text || content.photoPath) && (
+                              <time className="mt-1 block whitespace-nowrap text-right text-[10px] leading-4 text-slate-300/70">
+                                {formatChatTime(message.created_at)}
+                              </time>
+                            )}
+                          </article>
                         </div>
-
-                        <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-300">
-                          {message.message}
-                        </p>
-                      </article>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 
-                <form onSubmit={sendReply} className="mt-6 space-y-3">
+                <form onSubmit={sendReply} className="mt-5 space-y-3 border-t border-white/[0.07] pt-5">
                   <label className="block text-sm font-medium text-white">
                     Reply to client
                   </label>
-
                   <textarea
                     value={reply}
                     onChange={(event) => setReply(event.target.value)}
-                    rows={5}
+                    rows={4}
                     maxLength={10000}
                     required
-                    placeholder="Write your response..."
-                    className={inputClass}
+                    placeholder="Write your message..."
+                    className={`${inputClass} resize-y leading-6`}
                   />
-
-                  <p className="text-xs leading-5 text-slate-500">
-                    Replies are saved to the ticket conversation. Only
-                    send information appropriate for the selected client.
-                  </p>
-
                   <button
                     type="submit"
                     disabled={sendingReply || !reply.trim()}
-                    className="w-full rounded-xl border border-cyan-200/20 bg-cyan-200/10 px-4 py-3 text-sm font-medium text-cyan-100 transition hover:bg-cyan-200/15 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-xl bg-gradient-to-r from-cyan-300 to-teal-300 px-4 py-3 text-sm font-semibold text-[#06111d] transition hover:from-cyan-200 hover:to-teal-200 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {sendingReply ? "Sending reply..." : "Send reply"}
+                    {sendingReply ? "Sending..." : "Send reply"}
                   </button>
                 </form>
-              </div>
-            </>
-          )}
-        </div>
+              </section>
+          </div>
+        )}
       </section>
     </div>
   );
