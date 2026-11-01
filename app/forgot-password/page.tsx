@@ -43,8 +43,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#07111f] px-5 py-12 text-white">
-      <section className="w-full max-w-md rounded-2xl border border-white/10 bg-white/[.04] p-7 sm:p-9">
+    <main className="auth-viewport flex items-center justify-center bg-[#07111f] px-5 py-12 text-white">
+      <section className="auth-card w-full max-w-md rounded-2xl border border-white/10 bg-white/[.04] p-7 sm:p-9">
         <a
           href={returnToSettings ? "/dashboard?section=Settings" : "/login"}
           className="text-sm text-cyan-300 hover:text-cyan-200"
@@ -65,7 +65,7 @@ export default function ForgotPasswordPage() {
           exists, password reset instructions will be sent.
         </p>
 
-        <form onSubmit={submit} className="mt-6 space-y-4">
+        <form onSubmit={submit} className="auth-form mt-6 space-y-4">
           <label className="block text-sm text-slate-200">
             Email address
 

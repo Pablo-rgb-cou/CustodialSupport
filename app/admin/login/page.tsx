@@ -75,11 +75,11 @@ export default function AdminLoginPage() {
     }
 
     return (
-        <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#04111f] px-5 py-12 text-white">
+        <main className="auth-viewport relative flex items-center justify-center overflow-hidden bg-[#04111f] px-5 py-12 text-white">
             <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
 
-            <section className="relative w-full max-w-md rounded-3xl border border-white/10 bg-[#0a1b2b]/95 p-7 shadow-2xl shadow-black/30 sm:p-10">
+            <section className="auth-card relative w-full max-w-md rounded-3xl border border-white/10 bg-[#0a1b2b]/95 p-7 shadow-2xl shadow-black/30 sm:p-10">
                 <Link
                     href="/"
                     className="mb-9 inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-cyan-300"
@@ -105,7 +105,7 @@ export default function AdminLoginPage() {
                     CustodialSupport dashboard.
                 </p>
 
-                <form onSubmit={handleLogin} className="mt-8 space-y-5">
+                <form onSubmit={handleLogin} className="auth-form mt-8 space-y-5">
                     <div>
                         <label
                             htmlFor="admin-email"

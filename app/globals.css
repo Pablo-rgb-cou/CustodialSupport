@@ -432,3 +432,99 @@ button:focus-visible {
   height: 0 !important;
   background: transparent !important;
 }
+
+/* Auth and password recovery screens stay within the device viewport. */
+main.auth-viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0 !important;
+  box-sizing: border-box;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+  padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+main.auth-viewport::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.auth-content {
+  min-height: 0;
+  max-height: 100%;
+}
+
+.auth-card {
+  max-height: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-height: 780px) {
+  main.auth-viewport {
+    padding-left: max(12px, env(safe-area-inset-left)) !important;
+    padding-right: max(12px, env(safe-area-inset-right)) !important;
+  }
+
+  .auth-card {
+    padding: 1.25rem !important;
+  }
+
+  .auth-form {
+    margin-top: 1rem !important;
+  }
+
+  .auth-form > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.75rem !important;
+  }
+
+  .auth-footer {
+    margin-top: 0.75rem !important;
+  }
+}
+
+@media (max-height: 680px) {
+  main.auth-viewport {
+    padding-top: max(6px, env(safe-area-inset-top)) !important;
+    padding-bottom: max(6px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .auth-card {
+    padding: 0.85rem !important;
+  }
+
+  .auth-card h1 {
+    font-size: 1.5rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .auth-card p {
+    line-height: 1.35 !important;
+  }
+
+  .auth-form {
+    margin-top: 0.65rem !important;
+  }
+
+  .auth-form > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.5rem !important;
+  }
+
+  .auth-card input,
+  .auth-card button {
+    min-height: 2.5rem;
+  }
+
+  .auth-footer {
+    margin-top: 0.5rem !important;
+    font-size: 0.65rem !important;
+    line-height: 1rem !important;
+  }
+}

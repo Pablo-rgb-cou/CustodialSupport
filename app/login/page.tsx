@@ -53,7 +53,7 @@ try {
 }
 
 return (
-<main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#07111f] px-5 py-12 text-white">
+<main className="auth-viewport relative flex items-center justify-center overflow-hidden bg-[#07111f] px-5 py-12 text-white">
 {/* Decorative background */}
 <div aria-hidden="true" className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full bg-cyan-400/10 blur-3xl" />
 
@@ -62,7 +62,7 @@ return (
     className="pointer-events-none absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl"
   />
 
-  <div className="relative z-10 w-full max-w-md">
+  <div className="auth-content relative z-10 w-full max-w-md">
     {/* Back to homepage */}
     <Link
       href="/"
@@ -73,7 +73,7 @@ return (
     </Link>
 
     {/* Login card */}
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-7 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-9">
+    <div className="auth-card rounded-2xl border border-white/10 bg-white/[0.04] p-7 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-9">
       {/* Brand */}
       <div className="mb-8">
         <Link href="/" className="mb-7 inline-flex items-center gap-2">
@@ -100,7 +100,7 @@ return (
       </div>
 
       {/* Login form */}
-      <form onSubmit={handleLogin} className="space-y-5">
+      <form onSubmit={handleLogin} className="auth-form space-y-5">
         <div>
           <label
             htmlFor="email"
@@ -193,7 +193,7 @@ return (
       </p>
     </div>
 
-    <p className="mt-6 text-center text-xs leading-5 text-slate-500">
+    <p className="auth-footer mt-6 text-center text-xs leading-5 text-slate-500">
       Keep your password private. Never share your login credentials or
       verification codes with anyone.
     </p>

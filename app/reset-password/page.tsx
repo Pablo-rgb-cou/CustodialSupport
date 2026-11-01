@@ -143,7 +143,7 @@ export default function ResetPasswordPage() {
 
   if (verifying) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#04111f] text-white">
+      <main className="auth-viewport grid place-items-center bg-[#04111f] text-white">
         <p className="text-sm text-slate-300">
           Verifying your password reset link...
         </p>
@@ -152,12 +152,12 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#04111f] px-5 py-12 text-white">
+    <main className="auth-viewport relative flex items-center justify-center overflow-hidden bg-[#04111f] px-5 py-12 text-white">
       <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
 
       <div className="pointer-events-none absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
 
-      <section className="relative w-full max-w-md rounded-3xl border border-white/10 bg-[#0a1b2b]/95 p-7 shadow-2xl shadow-black/30 sm:p-10">
+      <section className="auth-card relative w-full max-w-md rounded-3xl border border-white/10 bg-[#0a1b2b]/95 p-7 shadow-2xl shadow-black/30 sm:p-10">
         <a
           href={returnToSettings ? "/dashboard?section=Settings" : "/login"}
           className="mb-9 inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-cyan-300"
@@ -182,7 +182,7 @@ export default function ResetPasswordPage() {
         </p>
 
         {sessionReady ? (
-          <form onSubmit={handleReset} className="mt-8 space-y-5">
+          <form onSubmit={handleReset} className="auth-form mt-8 space-y-5">
             <div>
               <label
                 htmlFor="new-password"

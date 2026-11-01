@@ -67,7 +67,7 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="relative flex min-h-[100svh] items-center justify-center overflow-x-hidden overflow-y-auto bg-[#07111f] px-5 py-3 text-white sm:min-h-screen sm:overflow-hidden sm:py-12">
+    <main className="auth-viewport relative flex items-center justify-center overflow-hidden bg-[#07111f] px-5 py-3 text-white sm:py-12">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full bg-cyan-400/10 blur-3xl"
@@ -78,7 +78,7 @@ export default function SignupPage() {
         className="pointer-events-none absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl"
       />
 
-      <div className="relative z-10 my-auto w-full max-w-md">
+      <div className="auth-content relative z-10 w-full max-w-md">
         <Link
           href="/"
           className="mb-3 inline-flex items-center gap-2 text-xs text-cyan-300 transition hover:text-cyan-200 sm:mb-8 sm:text-sm"
@@ -87,7 +87,7 @@ export default function SignupPage() {
           Back to home
         </Link>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-9">
+        <div className="auth-card rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-9">
           <div className="mb-4 sm:mb-8">
             <Link href="/" className="mb-3 inline-flex items-center gap-2 sm:mb-7">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400 text-lg font-black text-[#07111f] sm:h-10 sm:w-10">
@@ -112,7 +112,7 @@ export default function SignupPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSignup} className="space-y-2.5 sm:space-y-5">
+          <form onSubmit={handleSignup} className="auth-form space-y-2.5 sm:space-y-5">
             <div>
               <label
                 htmlFor="fullName"
@@ -232,7 +232,7 @@ export default function SignupPage() {
           </p>
         </div>
 
-        <p className="mt-3 text-center text-[10px] leading-4 text-slate-500 sm:mt-6 sm:text-xs sm:leading-5">
+        <p className="auth-footer mt-3 text-center text-[10px] leading-4 text-slate-500 sm:mt-6 sm:text-xs sm:leading-5">
           Keep your password private. Never share your password or email verification link with anyone.
         </p>
       </div>
