@@ -10,6 +10,7 @@ type Notice = {
   title: string;
   message: string;
   type: string;
+  is_popup: boolean;
   read_at: string | null;
   created_at: string;
 };
@@ -24,6 +25,8 @@ export default function AdminNotificationsPage() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [type, setType] = useState("info");
+  const [isPopup, setIsPopup] = useState(false);
+  const [showPopupPreview, setShowPopupPreview] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,20 +73,20 @@ export default function AdminNotificationsPage() {
           .order("full_name"),
         supabase
           .from("notifications")
-          .select("id,client_id,title,message,type,read_at,created_at")
+          .select("id,client_id,title,message,type,is_popup,read_at,created_at")
           .order("created_at", { ascending: false })
           .limit(100),
       ]);
 
+      // Load the client picker independently so a missing optional notification
+      // column cannot make the entire client list disappear.
+      if (!profilesResult.error) setClients((profilesResult.data ?? []) as Profile[]);
+      if (!notificationsResult.error) setItems((notificationsResult.data ?? []) as Notice[]);
       if (profilesResult.error || notificationsResult.error) {
-        setError(
-          `Could not load notifications: ${
-            profilesResult.error?.message ?? notificationsResult.error?.message
-          }`
-        );
-      } else {
-        setClients((profilesResult.data ?? []) as Profile[]);
-        setItems((notificationsResult.data ?? []) as Notice[]);
+        const missingPopupColumn = notificationsResult.error?.message.includes("is_popup");
+        setError(missingPopupColumn
+          ? "Client list loaded, but popup announcements need the Supabase migration 202610310004_notification_popups.sql to be run."
+          : `Could not load notifications: ${profilesResult.error?.message ?? notificationsResult.error?.message}`);
       }
     } catch (loadError) {
       setError(
@@ -138,6 +141,8 @@ export default function AdminNotificationsPage() {
     setTitle("");
     setMessage("");
     setType("info");
+    setIsPopup(false);
+    setShowPopupPreview(false);
   }
 
   function beginEdit(item: Notice) {
@@ -146,6 +151,8 @@ export default function AdminNotificationsPage() {
     setTitle(item.title);
     setMessage(item.message);
     setType(item.type);
+    setIsPopup(item.is_popup);
+    setShowPopupPreview(false);
     setError("");
     setNotice("");
     document
@@ -191,6 +198,7 @@ export default function AdminNotificationsPage() {
             p_title: title.trim(),
             p_message: message.trim(),
             p_type: type,
+            p_is_popup: isPopup,
           }
         );
         if (updateError) {
@@ -206,6 +214,7 @@ export default function AdminNotificationsPage() {
             title: title.trim(),
             message: message.trim(),
             type,
+            is_popup: isPopup,
           });
         if (insertError) {
           setError(`Could not create notification: ${insertError.message}`);
@@ -378,7 +387,24 @@ export default function AdminNotificationsPage() {
               required
             />
           </label>
+          <label className="md:col-span-2 flex items-start gap-3 rounded-xl border border-cyan-200/15 bg-cyan-300/[.04] p-4 text-sm text-slate-200">
+            <input type="checkbox" className="mt-1 size-4 accent-cyan-300" checked={isPopup} onChange={(event) => { const checked = event.target.checked; setIsPopup(checked); setShowPopupPreview(checked); }} />
+            <span className="flex-1"><span className="block font-medium text-white">Show as a client popup</span><span className="mt-1 block text-xs leading-5 text-slate-400">Show this message as a dismissible popup for the selected client.</span></span>
+            {isPopup && <button type="button" onClick={() => setShowPopupPreview(true)} className="shrink-0 rounded-lg border border-cyan-200/20 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-200/[.06]">Preview popup</button>}
+          </label>
         </div>
+
+        {isPopup && showPopupPreview && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto bg-slate-950/75 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-4xl rounded-3xl border border-cyan-200/15 bg-[#081a2a] p-5 shadow-2xl sm:p-8">
+              <div className="mb-4 flex items-center justify-between gap-4"><p className="text-xs font-semibold uppercase tracking-[.2em] text-cyan-300">Client popup preview · {clientId ? names.get(clientId) ?? "Selected client" : "Select a client"}</p><button type="button" onClick={() => setShowPopupPreview(false)} className="grid size-10 shrink-0 place-items-center rounded-xl border border-white/10 text-lg text-slate-300" aria-label="Close preview">×</button></div>
+              <h4 className="text-xl font-semibold text-white sm:text-2xl">{title.trim() || "Announcement title"}</h4>
+              <div className="my-6 border-t border-white/[.08]" />
+              <div className="min-h-28 rounded-2xl border border-white/[.07] bg-white/[.02] p-5 sm:p-6"><p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-300 sm:text-base">{message.trim() || "Announcement message preview"}</p></div>
+              <div className="mt-6 flex justify-end"><button type="button" onClick={() => setShowPopupPreview(false)} className="rounded-xl border border-white/10 px-5 py-3 text-sm text-slate-300 transition hover:bg-white/[.05]">Close</button></div>
+            </div>
+          </div>
+        )}
 
         {error && <p role="alert" className="mt-4 text-sm text-rose-200">{error}</p>}
         {notice && <p role="status" className="mt-4 text-sm text-emerald-200">{notice}</p>}
@@ -430,7 +456,7 @@ export default function AdminNotificationsPage() {
                   </time>
                 </div>
                 <p className="mt-1 text-xs text-cyan-200">
-                  {names.get(item.client_id) ?? "Client profile unavailable"} · {item.type} · {item.read_at ? "Read" : "Unread"}
+                  {names.get(item.client_id) ?? "Client profile unavailable"} · {item.type} · {item.read_at ? "Read" : "Unread"}{item.is_popup ? " · Popup" : ""}
                 </p>
                 <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">
                   {item.message}

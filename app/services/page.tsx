@@ -42,7 +42,7 @@ export default function ServicesPage() {
       </div>
 
       {/* Shared navigation */}
-      <header className="relative z-20 border-b border-white/[0.08] bg-[#070b14]/75 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#070b14]/95 backdrop-blur-xl">
         <nav className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 sm:py-4 lg:px-10 lg:py-5">
           <a href="/" aria-label="Custodial Support home" className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-400/10 text-lg font-bold text-cyan-300 transition-colors duration-300 hover:border-cyan-300/60 hover:bg-cyan-400/20 sm:h-10 sm:w-10 sm:text-xl">C</span>

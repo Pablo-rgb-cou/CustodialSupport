@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -34,7 +35,7 @@ createdAtISO: string;
 
 const initialTickets: Ticket[] = [];
 
-type ClientNotification = { id: string; title: string; message: string; type: string; read_at: string | null; created_at: string };
+type ClientNotification = { id: string; title: string; message: string; type: string; is_popup: boolean; read_at: string | null; created_at: string };
 
 type ClientTicketMessage = {
   id: string;
@@ -138,12 +139,41 @@ function formatChatTime(value: string) {
 }
 
 const navigation = [
-{ label: "Overview", icon: "◫" },
-{ label: "Withdrawals", icon: "↗" },
-{ label: "Support tickets", icon: "▤" },
-{ label: "Notifications", icon: "♧" },
-{ label: "Settings", icon: "⚙" },
+{ label: "Overview", icon: "home" },
+{ label: "Withdrawals", icon: "withdrawals" },
+{ label: "Support tickets", icon: "tickets" },
+{ label: "Notifications", icon: "notifications" },
+{ label: "Settings", icon: "settings" },
 ];
+
+const navigationIconTileColors: Record<string, string> = {
+  home: "border-cyan-300/20 bg-cyan-300/[0.09] text-cyan-200",
+  withdrawals: "border-emerald-300/20 bg-emerald-300/[0.09] text-emerald-200",
+  tickets: "border-sky-300/20 bg-sky-300/[0.09] text-sky-200",
+  notifications: "border-amber-300/20 bg-amber-300/[0.09] text-amber-200",
+  settings: "border-violet-300/20 bg-violet-300/[0.09] text-violet-200",
+};
+
+function DashboardNavigationIcon({ icon }: { icon: string }) {
+  const common = { viewBox: "0 0 24 24", fill: "currentColor", className: "h-5 w-5", "aria-hidden": true as const };
+
+  if (icon === "home") {
+    return <svg {...common}><path d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.06l8.69-8.689Z" /><path d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z" /></svg>;
+  }
+  if (icon === "withdrawals") {
+    return <svg {...common}><path d="M4.5 3.75a3 3 0 0 0-3 3v.75h21v-.75a3 3 0 0 0-3-3h-15Z" /><path fillRule="evenodd" clipRule="evenodd" d="M22.5 9.75h-21v7.5a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-7.5Zm-18 3.75a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Zm.75 2.25a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Z" /></svg>;
+  }
+  if (icon === "tickets") {
+    return <svg {...common}><path d="M4.913 2.658c2.075-.27 4.19-.408 6.337-.408 2.147 0 4.262.139 6.337.408 1.922.25 3.291 1.861 3.405 3.727a4.403 4.403 0 0 0-1.032-.211 50.89 50.89 0 0 0-8.42 0c-2.358.196-4.04 2.19-4.04 4.434v4.286a4.47 4.47 0 0 0 2.433 3.984L7.28 21.53A.75.75 0 0 1 6 21v-4.03a48.527 48.527 0 0 1-1.087-.128C2.905 16.58 1.5 14.833 1.5 12.862V6.638c0-1.97 1.405-3.718 3.413-3.979Z" /><path d="M15.75 7.5c-1.376 0-2.739.057-4.086.169C10.124 7.797 9 9.103 9 10.609v4.285c0 1.507 1.128 2.814 2.67 2.94 1.243.102 2.5.157 3.768.165l2.782 2.781a.75.75 0 0 0 1.28-.53v-2.39l.33-.026c1.542-.125 2.67-1.433 2.67-2.94v-4.286c0-1.505-1.125-2.811-2.664-2.94A49.392 49.392 0 0 0 15.75 7.5Z" /></svg>;
+  }
+  if (icon === "notifications") {
+    return <svg {...common}><path fillRule="evenodd" clipRule="evenodd" d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 0 1-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 1 1-7.48 0 24.585 24.585 0 0 1-4.831-1.244.75.75 0 0 1-.298-1.205A8.217 8.217 0 0 0 5.25 9.75V9Zm4.502 8.9a2.25 2.25 0 1 0 4.496 0 25.057 25.057 0 0 1-4.496 0Z" /></svg>;
+  }
+  if (icon === "settings") {
+    return <svg {...common}><path fillRule="evenodd" clipRule="evenodd" d="M11.828 2.25c-.916 0-1.699.663-1.85 1.567l-.091.549a.798.798 0 0 1-.517.608 7.45 7.45 0 0 0-.478.198.798.798 0 0 1-.796-.064l-.453-.324a1.875 1.875 0 0 0-2.416.2l-.243.243a1.875 1.875 0 0 0-.2 2.416l.324.453a.798.798 0 0 1 .064.796 7.448 7.448 0 0 0-.198.478.798.798 0 0 1-.608.517l-.55.092a1.875 1.875 0 0 0-1.566 1.849v.344c0 .916.663 1.699 1.567 1.85l.549.091c.281.047.508.25.608.517.06.162.127.321.198.478a.798.798 0 0 1-.064.796l-.324.453a1.875 1.875 0 0 0 .2 2.416l.243.243c.648.648 1.67.733 2.416.2l.453-.324a.798.798 0 0 1 .796-.064c.157.071.316.137.478.198.267.1.47.327.517.608l.092.55c.15.903.932 1.566 1.849 1.566h.344c.916 0 1.699-.663 1.85-1.567l.091-.549a.798.798 0 0 1 .517-.608 7.52 7.52 0 0 0 .478-.198.798.798 0 0 1 .796.064l.453.324a1.875 1.875 0 0 0 2.416-.2l.243-.243c.648-.648.733-1.67.2-2.416l-.324-.453a.798.798 0 0 1-.064-.796c.071-.157.137-.316.198-.478.1-.267.327-.47.608-.517l.55-.091a1.875 1.875 0 0 0 1.566-1.85v-.344c0-.916-.663-1.699-1.567-1.85l-.549-.091a.798.798 0 0 1-.608-.517 7.507 7.507 0 0 0-.198-.478.798.798 0 0 1 .064-.796l.324-.453a1.875 1.875 0 0 0-.2-2.416l-.243-.243a1.875 1.875 0 0 0-2.416-.2l-.453.324a.798.798 0 0 1-.796.064 7.462 7.462 0 0 0-.478-.198.798.798 0 0 1-.517-.608l-.091-.55a1.875 1.875 0 0 0-1.85-1.566h-.344ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" /></svg>;
+  }
+  return <span aria-hidden="true">{icon}</span>;
+}
 
 function StatusBadge({ status }: { status: string }) {
 const styles: Record<string, string> = {
@@ -194,7 +224,7 @@ const iconPaths: Record<string, string> = {
 return (
 <div className="group relative isolate min-h-[156px] overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#102941] via-[#0a1c30] to-[#071321] p-5 shadow-[0_14px_38px_rgba(0,0,0,0.20)] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-[0_20px_48px_rgba(0,0,0,0.27)] sm:p-6">
 <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/35 to-transparent" />
-<div aria-hidden="true" className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full border border-cyan-200/[0.08] transition duration-700 group-hover:scale-110 group-hover:border-cyan-200/[0.16]" />
+<div aria-hidden="true" className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full border border-cyan-200/[0.08] transition-colors duration-700 group-hover:border-cyan-200/[0.16]" />
 <div aria-hidden="true" className="pointer-events-none absolute -right-3 bottom-[-42px] h-32 w-32 rounded-full bg-cyan-400/[0.07] blur-2xl transition duration-500 group-hover:bg-cyan-300/[0.11]" />
 <svg aria-hidden="true" viewBox="0 0 120 90" fill="none" className="pointer-events-none absolute bottom-2 right-2 h-24 w-32 opacity-20 transition duration-500 group-hover:opacity-35">
 <path d="M4 72 28 52 44 60 66 33 82 40 112 10" stroke="#67E8F9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -329,7 +359,7 @@ function WithdrawalPayoutCard() {
       const id = nextPayoutId.current++;
       const newPayout = makeDemoPayout(id);
       setPayouts((current) => [newPayout, ...current].slice(0, 3));
-    }, 20000);
+    }, 12000);
 
     async function loadPrices() {
       try {
@@ -399,8 +429,8 @@ function WithdrawalPayoutCard() {
 
       <div className="px-5 pb-2 pt-3 sm:px-6">
         <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.9fr)] gap-3 border-b border-white/[0.07] pb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-xs">
-          <span>Client</span>
-          <span>USD / crypto equivalent</span>
+          <span>Customers</span>
+          <span>Withdrawal amount</span>
           <span>Date</span>
         </div>
         <div aria-label="Recent platform activity" className="divide-y divide-white/[0.055]">
@@ -422,7 +452,7 @@ function WithdrawalPayoutCard() {
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-xs font-medium text-slate-200 sm:text-sm">{payout.name}</p>
-                    <p className="mt-1 text-[10px] text-slate-500">Sample client</p>
+                    <p className="mt-1 text-[10px] text-slate-500">Sample customer</p>
                   </div>
                 </div>
                 <div className="min-w-0">
@@ -438,18 +468,6 @@ function WithdrawalPayoutCard() {
             );
           })}
         </div>
-      </div>
-      <div className="border-t border-white/[0.06] px-5 py-3 sm:px-6">
-        <p className="text-[10px] leading-5 text-slate-500">
-          Fictional sample activity, not verified customer payouts. Crypto equivalents are estimates based on market prices and are not transaction confirmations.
-        </p>
-        <p className="mt-1 text-[10px] text-slate-500">
-          {priceUpdatedAt
-            ? `Market prices updated ${priceUpdatedAt.toLocaleTimeString("en-US")}.`
-            : priceUnavailable
-              ? "Live prices are temporarily unavailable."
-              : "Fetching live cryptocurrency prices…"}
-        </p>
       </div>
       <style jsx>{`
         @keyframes payout-in {
@@ -484,6 +502,7 @@ const [userName, setUserName] = useState("Client");
 const [userEmail, setUserEmail] = useState("");
 const [authLoading, setAuthLoading] = useState(true);
 const [authCheckError, setAuthCheckError] = useState("");
+const [authSessionMissing, setAuthSessionMissing] = useState(false);
 const [authRetryCount, setAuthRetryCount] = useState(0);
 const [signingOut, setSigningOut] = useState(false);
 
@@ -528,17 +547,74 @@ const [withdrawalsError, setWithdrawalsError] = useState("");
 const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
 const [overviewMessages, setOverviewMessages] = useState<ClientTicketMessage[]>([]);
 const [notifications, setNotifications] = useState<ClientNotification[]>([]);
+const [selectedNotification, setSelectedNotification] = useState<ClientNotification | null>(null);
+const [popupNotification, setPopupNotification] = useState<ClientNotification | null>(null);
+const [dismissedPopupIds, setDismissedPopupIds] = useState<string[]>([]);
+const popupAnnouncementCache = useRef<ClientNotification[]>([]);
+
+useEffect(() => {
+  if (!popupNotification) return;
+
+  const bodyOverflow = document.body.style.overflow;
+  const htmlOverflow = document.documentElement.style.overflow;
+  document.body.style.overflow = "hidden";
+  document.documentElement.style.overflow = "hidden";
+
+  return () => {
+    document.body.style.overflow = bodyOverflow;
+    document.documentElement.style.overflow = htmlOverflow;
+  };
+}, [popupNotification]);
+
+useEffect(() => {
+  if (!selectedNotification) return;
+
+  const bodyOverflow = document.body.style.overflow;
+  const htmlOverflow = document.documentElement.style.overflow;
+  document.body.style.overflow = "hidden";
+  document.documentElement.style.overflow = "hidden";
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape") setSelectedNotification(null);
+  };
+  window.addEventListener("keydown", onKeyDown);
+  return () => {
+    window.removeEventListener("keydown", onKeyDown);
+    document.body.style.overflow = bodyOverflow;
+    document.documentElement.style.overflow = htmlOverflow;
+  };
+}, [selectedNotification]);
+
 const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 const notificationReadAttempted = useRef(false);
 const [currentUserId, setCurrentUserId] = useState("");
 const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 const [ticketMessages, setTicketMessages] = useState<ClientTicketMessage[]>([]);
 const [ticketReply, setTicketReply] = useState("");
+const clientTypingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+const clientTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 const [ticketReplyPhoto, setTicketReplyPhoto] = useState<File | null>(null);
 const [ticketPhotoUrls, setTicketPhotoUrls] = useState<Record<string, string | null>>({});
+const [ticketPhotoViewerUrl, setTicketPhotoViewerUrl] = useState<string | null>(null);
 const ticketPhotoInputRef = useRef<HTMLInputElement | null>(null);
 const [loadingTicketMessages, setLoadingTicketMessages] = useState(false);
 const [sendingTicketReply, setSendingTicketReply] = useState(false);
+
+useEffect(() => {
+  if (!ticketPhotoViewerUrl) return;
+  const bodyOverflow = document.body.style.overflow;
+  const htmlOverflow = document.documentElement.style.overflow;
+  document.body.style.overflow = "hidden";
+  document.documentElement.style.overflow = "hidden";
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape") setTicketPhotoViewerUrl(null);
+  };
+  window.addEventListener("keydown", onKeyDown);
+  return () => {
+    window.removeEventListener("keydown", onKeyDown);
+    document.body.style.overflow = bodyOverflow;
+    document.documentElement.style.overflow = htmlOverflow;
+  };
+}, [ticketPhotoViewerUrl]);
 
 const [showTicketForm, setShowTicketForm] = useState(false);
 const [successMessage, setSuccessMessage] = useState("");
@@ -635,6 +711,21 @@ useEffect(() => {
 let active = true;
 setAuthLoading(true);
 setAuthCheckError("");
+setAuthSessionMissing(false);
+
+const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_OUT") {
+    router.replace("/login");
+  }
+});
+
+async function requireFreshSignIn() {
+  if (!active) return;
+  setAuthLoading(true);
+  setAuthCheckError("");
+  await supabase.auth.signOut({ scope: "local" });
+  if (active) router.replace("/login");
+}
 
 async function loadUser() {
   const {
@@ -645,16 +736,35 @@ async function loadUser() {
   if (!active) return;
 
   if (error) {
-    console.error("Could not verify the client session:", error.message);
-    setAuthCheckError(
-      "We couldn't verify your session just now. You have not been signed out. Please try again."
-    );
+    // A missing session is different from a temporary Auth/network verification failure.
+    // Check local storage so we don't tell an actually signed-out user that they remain signed in.
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!active) return;
+
+    const hasSavedSession = Boolean(sessionData.session);
+    const errorCode = String((error as { code?: string }).code ?? "").toLowerCase();
+    const errorStatus = Number((error as { status?: number }).status ?? 0);
+    const errorText = `${error.name} ${error.message} ${errorCode}`.toLowerCase();
+    const sessionIsExpired =
+      errorStatus === 401 ||
+      ["invalid_grant", "refresh_token_not_found", "session_not_found", "user_not_found"].includes(errorCode) ||
+      /session (has )?expired|jwt expired|refresh token.*(expired|invalid|not found)|invalid refresh token/.test(errorText);
+
+    if (!hasSavedSession || sessionIsExpired) {
+      setAuthSessionMissing(true);
+      await requireFreshSignIn();
+    } else {
+      console.warn("Could not verify the client session:", error.message);
+      setAuthCheckError(
+        "We couldn't verify your session just now. Your saved session is still available. Please try again."
+      );
+    }
     setAuthLoading(false);
     return;
   }
 
   if (!user) {
-    router.replace("/login");
+    await requireFreshSignIn();
     return;
   }
 
@@ -675,12 +785,13 @@ async function loadUser() {
   if (profile?.full_name?.trim()) { setUserName(profile.full_name.trim()); setFullName(profile.full_name.trim()); }
   const [noticeResult, unreadNoticeResult] = await Promise.all([
     supabase.from("notifications")
-      .select("id, title, message, type, read_at, created_at").eq("client_id", user.id)
+      .select("id, title, message, type, is_popup, read_at, created_at").eq("client_id", user.id)
       .order("created_at", { ascending: false }).limit(100),
     supabase.from("notifications")
       .select("id", { count: "exact", head: true })
       .eq("client_id", user.id)
-      .is("read_at", null),
+      .is("read_at", null)
+      .eq("is_popup", false),
   ]);
   if (!active) return;
   if (!noticeResult.error) setNotifications((noticeResult.data ?? []) as ClientNotification[]);
@@ -762,6 +873,7 @@ loadUser();
 
 return () => {
   active = false;
+  authListener.subscription.unsubscribe();
 };
 
 }, [router, authRetryCount]);
@@ -796,7 +908,7 @@ if (label === "Overview") {
 }
 
 if (label === "Notifications") {
-  setSuccessMessage("Your notifications are up to date.");
+  setSuccessMessage("");
   setNotificationReadError("");
 }
 
@@ -968,6 +1080,11 @@ async function handleClientTicketReply(event: React.FormEvent<HTMLFormElement>) 
     }
 
     setTicketReply("");
+    if (clientTypingTimeoutRef.current) {
+      clearTimeout(clientTypingTimeoutRef.current);
+      clientTypingTimeoutRef.current = null;
+    }
+    void clientTypingChannelRef.current?.send({ type: "broadcast", event: "typing", payload: { actor: "client", isTyping: false } });
     setTicketReplyPhoto(null);
     await loadClientTicketMessages(selectedTicketId);
     setSuccessMessage("Your reply has been sent to support.");
@@ -991,6 +1108,48 @@ useEffect(() => {
   }
   void loadClientTicketMessages(selectedTicketId);
 }, [selectedTicketId]);
+
+// Typing is a transient, ticket-scoped Broadcast. Only a boolean is sent; the
+// draft text is never transmitted or stored. The matching admin chat listens
+// on the same private topic.
+useEffect(() => {
+  if (!currentUserId || !selectedTicketId) return;
+
+  const channel = supabase
+    .channel(`ticket-typing:${selectedTicketId}`, { config: { private: true } })
+    .subscribe();
+  clientTypingChannelRef.current = channel;
+
+  return () => {
+    if (clientTypingTimeoutRef.current) {
+      clearTimeout(clientTypingTimeoutRef.current);
+      clientTypingTimeoutRef.current = null;
+    }
+    if (clientTypingChannelRef.current === channel) clientTypingChannelRef.current = null;
+    void channel.send({ type: "broadcast", event: "typing", payload: { actor: "client", isTyping: false } });
+    void supabase.removeChannel(channel);
+  };
+}, [currentUserId, selectedTicketId]);
+
+function handleClientTicketReplyChange(value: string) {
+  setTicketReply(value);
+  if (clientTypingTimeoutRef.current) {
+    clearTimeout(clientTypingTimeoutRef.current);
+    clientTypingTimeoutRef.current = null;
+  }
+
+  const channel = clientTypingChannelRef.current;
+  if (!channel) return;
+
+  const isTyping = Boolean(value.trim());
+  void channel.send({ type: "broadcast", event: "typing", payload: { actor: "client", isTyping } });
+  if (isTyping) {
+    clientTypingTimeoutRef.current = setTimeout(() => {
+      void channel.send({ type: "broadcast", event: "typing", payload: { actor: "client", isTyping: false } });
+      clientTypingTimeoutRef.current = null;
+    }, 1800);
+  }
+}
 
 useEffect(() => {
   let active = true;
@@ -1045,10 +1204,10 @@ useEffect(() => {
       const [w, t, n, m, activityMessages, unreadNotices] = await Promise.all([
         supabase.from("withdrawals").select("id, amount, currency, crypto_asset, crypto_amount, wallet_address, status, transaction_reference, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }),
         supabase.from("support_tickets").select("id, subject, category, description, status, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }),
-        supabase.from("notifications").select("id, title, message, type, read_at, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }).limit(100),
+        supabase.from("notifications").select("id, title, message, type, is_popup, read_at, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }).limit(100),
         selectedTicketId ? supabase.from("ticket_messages").select("id, ticket_id, sender_id, message, is_internal, created_at").eq("ticket_id", selectedTicketId).eq("is_internal", false).order("created_at", { ascending: true }) : Promise.resolve({ data: [], error: null }),
         supabase.from("client_ticket_message_realtime").select("id, ticket_id, client_id, sender_id, message, is_internal, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }).limit(8),
-        supabase.from("notifications").select("id", { count: "exact", head: true }).eq("client_id", currentUserId).is("read_at", null),
+        supabase.from("notifications").select("id", { count: "exact", head: true }).eq("client_id", currentUserId).is("read_at", null).eq("is_popup", false),
       ]);
       if (!w.error) setTransactions((w.data ?? []).map((row) => mapClientWithdrawal(row)));
       if (!t.error) setTickets((t.data ?? []).map((row) => mapClientTicket(row)));
@@ -1100,6 +1259,7 @@ useEffect(() => {
         .select("id", { count: "exact", head: true })
         .eq("client_id", currentUserId)
         .is("read_at", null)
+        .eq("is_popup", false)
         .then(({ count, error }) => {
           if (!error) setUnreadNotificationCount(count ?? 0);
         });
@@ -1149,6 +1309,23 @@ useEffect(() => {
   })();
 }, [activeSection, currentUserId, unreadNotificationCount]);
 
+function dismissPopupNotification() {
+  const item = popupNotification;
+  if (!item) return;
+  setDismissedPopupIds((current) => current.includes(item.id) ? current : [...current, item.id]);
+  const next = popupAnnouncementCache.current.find((notification) => notification.id !== item.id && !dismissedPopupIds.includes(notification.id) && notification.is_popup);
+  setPopupNotification(next ?? null);
+}
+
+useEffect(() => {
+  const knownIds = new Set(popupAnnouncementCache.current.map((item) => item.id));
+  popupAnnouncementCache.current = [
+    ...popupAnnouncementCache.current,
+    ...notifications.filter((item) => item.is_popup && !knownIds.has(item.id)),
+  ];
+  setPopupNotification((current) => current ?? popupAnnouncementCache.current.find((item) => !dismissedPopupIds.includes(item.id)) ?? null);
+}, [notifications, dismissedPopupIds]);
+
 const pendingOrProcessingWithdrawals = transactions.filter(
   (transaction) =>
     transaction.status === "Pending" || transaction.status === "Processing"
@@ -1197,8 +1374,7 @@ const recentActivity = [
   }),
 ]
   .filter((item) => Number.isFinite(Date.parse(item.createdAt)))
-  .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-  .slice(0, 6);
+  .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
 const latestOpenTicket = [...activeTickets].sort(
   (a, b) => Date.parse(b.createdAtISO) - Date.parse(a.createdAtISO)
@@ -1249,19 +1425,45 @@ const filteredTransactions = transactions.filter((transaction) =>
     .includes(search.toLowerCase())
 );
 
+const isTicketChatOpen = activeSection === "Support tickets" && Boolean(selectedTicketId);
+
+useEffect(() => {
+  if (!isTicketChatOpen) return;
+
+  const bodyOverflow = document.body.style.overflow;
+  const htmlOverflow = document.documentElement.style.overflow;
+  document.body.style.overflow = "hidden";
+  document.documentElement.style.overflow = "hidden";
+
+  return () => {
+    document.body.style.overflow = bodyOverflow;
+    document.documentElement.style.overflow = htmlOverflow;
+  };
+}, [isTicketChatOpen]);
+
 if (authCheckError) {
   return (
     <main className="grid min-h-screen place-items-center bg-[#060d18] px-5 text-white">
       <section className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0a1929] p-6 shadow-2xl">
         <h1 className="text-lg font-semibold">Session check paused</h1>
         <p className="mt-2 text-sm leading-6 text-slate-400">{authCheckError}</p>
-        <button
-          type="button"
-          onClick={() => setAuthRetryCount((count) => count + 1)}
-          className="mt-5 rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
-        >
-          Try again
-        </button>
+        {authSessionMissing ? (
+          <button
+            type="button"
+            onClick={() => router.replace("/login")}
+            className="mt-5 rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+          >
+            Go to sign in
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAuthRetryCount((count) => count + 1)}
+            className="mt-5 rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+          >
+            Try again
+          </button>
+        )}
       </section>
     </main>
   );
@@ -1281,10 +1483,10 @@ Loading your dashboard...
 }
 
 return (
-<main className="min-h-screen bg-[#020a14] text-white selection:bg-cyan-300/25 selection:text-cyan-50">
-<div className="relative isolate flex min-h-screen overflow-x-clip bg-[radial-gradient(ellipse_at_72%_0%,rgba(14,165,233,0.14),transparent_34%),radial-gradient(ellipse_at_4%_56%,rgba(8,145,178,0.09),transparent_30%),linear-gradient(135deg,#020a14_0%,#07182a_48%,#020a14_100%)] before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[linear-gradient(rgba(148,163,184,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.025)_1px,transparent_1px)] before:bg-[size:56px_56px]">
+<main className={`${isTicketChatOpen ? "h-dvh overflow-hidden" : "min-h-screen"} bg-[#020a14] text-white selection:bg-cyan-300/25 selection:text-cyan-50`}>
+<div className={`relative isolate flex ${isTicketChatOpen ? "h-full min-h-0 overflow-hidden" : "min-h-screen overflow-x-clip"} bg-[radial-gradient(ellipse_at_72%_0%,rgba(14,165,233,0.14),transparent_34%),radial-gradient(ellipse_at_4%_56%,rgba(8,145,178,0.09),transparent_30%),linear-gradient(135deg,#020a14_0%,#07182a_48%,#020a14_100%)]`}>
 {/* Sidebar */}
-<aside className="sticky top-0 hidden h-screen w-[270px] shrink-0 self-start flex-col border-r border-cyan-200/[0.07] bg-[#04101e]/95 shadow-[12px_0_40px_rgba(0,0,0,0.12)] lg:flex">
+<aside className="fixed inset-y-0 left-0 z-30 hidden h-dvh w-[270px] shrink-0 flex-col border-r border-cyan-200/[0.07] bg-[#04101e]/95 shadow-[12px_0_40px_rgba(0,0,0,0.12)] lg:flex">
 <a href="/dashboard" className="flex h-20 items-center gap-3 border-b border-white/[0.07] px-6 transition hover:bg-white/[0.02]">
 <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200/20 bg-gradient-to-br from-cyan-300/20 to-blue-500/10 text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
 <svg aria-hidden="true" viewBox="0 0 32 32" fill="none" className="h-7 w-7"><path d="M16 2.8 27 7v8.1c0 7.1-4.5 11.8-11 14.1C9.5 26.9 5 22.2 5 15.1V7l11-4.2Z" fill="currentColor" fillOpacity=".16" stroke="currentColor" strokeWidth="1.6"/><path d="m10.5 15.8 3.5 3.4 7.6-8" stroke="#99F6E4" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1310,8 +1512,8 @@ Custodial<span className="text-cyan-300">Support</span>
                   : "text-slate-400 hover:bg-white/[0.045] hover:text-slate-100"
               }`}
             >
-              <span className="w-5 text-center text-base">
-                {item.icon}
+              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border shadow-[inset_0_1px_0_rgba(255,255,255,.04)] ${navigationIconTileColors[item.icon] ?? "border-slate-300/20 bg-slate-300/[0.07] text-slate-300"}`} aria-hidden="true">
+                <DashboardNavigationIcon icon={item.icon} />
               </span>
               {item.label}
               {item.label === "Withdrawals" &&
@@ -1368,9 +1570,9 @@ Custodial<span className="text-cyan-300">Support</span>
     </aside>
 
     {/* Main content */}
-    <div className="min-w-0 flex-1">
+    <div className={`min-w-0 flex-1 lg:ml-[270px] ${isTicketChatOpen ? "flex h-full min-h-0 flex-col overflow-hidden" : ""}`}>
       {/* Top navigation */}
-      <header className="sticky top-0 z-40 flex min-h-20 items-center justify-between gap-4 border-b border-white/[0.08] bg-[#07111f]/95 px-4 shadow-[0_8px_30px_rgba(0,0,0,0.18)] backdrop-blur-2xl sm:px-7 lg:px-10">
+      <header className="sticky top-0 z-40 flex min-h-20 shrink-0 items-center justify-between gap-4 border-b border-white/[0.08] bg-[#07111f]/95 px-4 shadow-[0_8px_30px_rgba(0,0,0,0.18)] backdrop-blur-2xl sm:px-7 lg:px-10">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
@@ -1429,7 +1631,9 @@ Custodial<span className="text-cyan-300">Support</span>
                     : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
                 }`}
               >
-                <span className="w-5 text-center text-base" aria-hidden="true">{item.icon}</span>
+                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border shadow-[inset_0_1px_0_rgba(255,255,255,.04)] ${navigationIconTileColors[item.icon] ?? "border-slate-300/20 bg-slate-300/[0.07] text-slate-300"}`} aria-hidden="true">
+                  <DashboardNavigationIcon icon={item.icon} />
+                </span>
                 <span>{item.label}</span>
                 {item.label === "Withdrawals" && pendingOrProcessingWithdrawalCount > 0 && (
                   <span
@@ -1466,9 +1670,9 @@ Custodial<span className="text-cyan-300">Support</span>
         </>
       )}
 
-      <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-7 lg:p-10">
-        {/* Contextual hero: account identity on Settings, welcome card elsewhere */}
-        {activeSection === "Settings" ? (
+      <div className={`mx-auto w-full ${isTicketChatOpen ? "max-w-none flex min-h-0 flex-1 flex-col overflow-hidden !p-0" : "max-w-[1600px] p-4 sm:p-7 lg:p-10"}`}>
+        {/* The account hero belongs to Overview; other sections have focused headers. */}
+        {activeSection === "Settings" || activeSection === "Withdrawals" || activeSection === "Notifications" || isTicketChatOpen ? null : activeSection === "Settings" ? (
           <section className="relative isolate mb-6 min-h-0 overflow-hidden rounded-2xl border border-sky-400/20 bg-gradient-to-br from-[#071a31] via-[#08203b] to-[#071525] p-4 shadow-[0_16px_42px_rgba(0,0,0,0.22)] sm:rounded-3xl sm:p-6">
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
               <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blue-400/[0.08] blur-3xl sm:-right-8 sm:-top-12 sm:h-64 sm:w-64" />
@@ -1540,16 +1744,22 @@ Custodial<span className="text-cyan-300">Support</span>
             </div>
             <div className="relative z-10 flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
               <div className="max-w-2xl">
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[0.05] px-3 py-1.5 text-xs text-emerald-200"><span className="h-2 w-2 rounded-full bg-emerald-300"/>Account connected</div>
-                <h2 className="text-2xl font-semibold tracking-[-0.035em] text-white sm:text-3xl">Welcome back, <span className="text-cyan-300">{userName}</span></h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">Review your account information and get help with a transaction.</p>
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[0.05] px-3 py-1.5 text-xs text-emerald-200"><span className="h-2 w-2 rounded-full bg-emerald-300"/>{activeSection === "Withdrawals" ? "Account updates" : "Account connected"}</div>
+                <h2 className="text-2xl font-semibold tracking-[-0.035em] text-white sm:text-3xl">{activeSection === "Withdrawals" ? <>Stay informed about your account<span className="text-cyan-300">.</span></> : <>Welcome back, <span className="text-cyan-300">{userName}</span></>}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{activeSection === "Withdrawals" ? "Check notifications for important account messages, support replies, and withdrawal updates." : "Review your account information and get help with a transaction."}</p>
+                {activeSection === "Withdrawals" && (
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-cyan-200/15 bg-cyan-200/[0.06] px-3 py-2 text-xs text-cyan-100">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-4 w-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9a6 6 0 0 0-12 0v.75a8.967 8.967 0 0 1-2.31 6.022 23.848 23.848 0 0 0 5.455 1.31m5.712 0a24.255 24.255 0 0 1-5.712 0m5.712 0a3 3 0 1 1-5.712 0" /></svg>
+                    {unreadNotificationCount > 0 ? `${unreadNotificationCount} unread account ${unreadNotificationCount === 1 ? "update" : "updates"}` : "No unread account updates"}
+                  </div>
+                )}
               </div>
-              <button onClick={() => { selectSection("Support tickets"); setShowTicketForm(true); setSuccessMessage(""); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-300 to-teal-300 px-5 py-3 text-sm font-semibold text-[#06111d] shadow-lg shadow-cyan-950/20 transition duration-200 hover:-translate-y-0.5 hover:from-cyan-200 hover:to-teal-200 active:translate-y-0"><span className="text-lg">+</span>Open support ticket</button>
+              <button onClick={() => { if (activeSection === "Withdrawals") { selectSection("Notifications"); } else { selectSection("Support tickets"); setShowTicketForm(true); } setSuccessMessage(""); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-300 to-teal-300 px-5 py-3 text-sm font-semibold text-[#06111d] shadow-lg shadow-cyan-950/20 transition duration-200 hover:-translate-y-0.5 hover:from-cyan-200 hover:to-teal-200 active:translate-y-0">{activeSection === "Withdrawals" ? <><span>View notifications</span><span aria-hidden="true">→</span></> : <><span className="text-lg">+</span>Open support ticket</>}</button>
             </div>
           </section>
         )}
 
-        {successMessage && (
+        {successMessage && !isTicketChatOpen && (
           <div
             role="status"
             className="mb-6 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.06] p-4 text-sm leading-6 text-emerald-200"
@@ -1588,74 +1798,94 @@ Custodial<span className="text-cyan-300">Support</span>
               />
             </section>
 
-            <section className="mt-6 grid gap-4 xl:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
-              <article className="group relative isolate overflow-hidden rounded-2xl border border-cyan-200/15 bg-gradient-to-br from-[#103047] via-[#0b1d30] to-[#081523] p-5 shadow-[0_18px_44px_rgba(0,0,0,0.2)] sm:rounded-3xl sm:p-6">
-                <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-cyan-300/[0.09] blur-3xl transition duration-500 group-hover:bg-cyan-300/[0.14]" />
-                <div aria-hidden="true" className="pointer-events-none absolute -right-7 bottom-[-4.5rem] h-40 w-40 rounded-full border border-cyan-200/[0.08]" />
-                <div className="relative">
-                  <div className="mb-5 flex items-center justify-between gap-3">
-                    <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200/15 bg-cyan-200/[0.06] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100 sm:text-[11px]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-200" />
-                      {nextStep.eyebrow}
-                    </span>
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200/15 bg-[#071726]/70 text-cyan-100">
-                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-5 w-5"><path d="M12 3v18M3 12h18" strokeLinecap="round"/><circle cx="12" cy="12" r="9"/></svg>
-                    </span>
+            <section className="mt-6">
+              <article className="group relative isolate overflow-hidden rounded-[1.75rem] border border-cyan-200/[0.16] bg-[radial-gradient(ellipse_at_88%_15%,rgba(34,211,238,0.14),transparent_35%),linear-gradient(135deg,#102b40_0%,#0a1c2e_55%,#071321_100%)] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.24)] transition duration-300 hover:border-cyan-200/25 hover:shadow-[0_26px_70px_rgba(0,0,0,0.3)] sm:p-7 lg:p-8">
+                <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-cyan-300/[0.09] blur-3xl transition duration-500 group-hover:bg-cyan-300/[0.15] sm:h-80 sm:w-80" />
+                <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 right-8 h-64 w-64 rounded-full border border-cyan-100/[0.08] sm:right-24 sm:h-80 sm:w-80" />
+                <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 right-16 h-48 w-48 rounded-full border border-cyan-100/[0.06] sm:right-32 sm:h-60 sm:w-60" />
+                <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3 sm:justify-start">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-cyan-100/15 bg-cyan-100/[0.07] px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.17em] text-cyan-100 sm:text-[11px]">
+                        <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-200 opacity-40"/><span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-200"/></span>
+                        {nextStep.eyebrow}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {nextStep.section === "Withdrawals" && latestPendingWithdrawal && (
+                          <span className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${latestPendingWithdrawal.status === "Processing" ? "border-cyan-200/20 bg-cyan-200/[0.08] text-cyan-100" : "border-amber-200/20 bg-amber-200/[0.08] text-amber-100"}`}>
+                            {latestPendingWithdrawal.status}
+                          </span>
+                        )}
+                        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-cyan-100/15 bg-[#061726]/70 text-cyan-100 shadow-[0_10px_30px_rgba(0,0,0,0.18)] sm:hidden">
+                          {nextStep.section === "Withdrawals" ? (
+                            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-6 w-6"><path strokeLinecap="round" strokeLinejoin="round" d="M7 17 17 7M8 7h9v9" /></svg>
+                          ) : (
+                            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-6 w-6"><path d="M12 3v18M3 12h18" strokeLinecap="round"/><circle cx="12" cy="12" r="9"/></svg>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <h3 className="mt-5 max-w-2xl text-2xl font-semibold leading-tight tracking-[-0.035em] text-white sm:mt-6 sm:text-3xl">{nextStep.title}</h3>
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base sm:leading-7">{nextStep.detail}</p>
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="mt-6 inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-cyan-300 via-cyan-300 to-teal-300 px-5 py-3 text-sm font-semibold text-[#06111d] shadow-[0_12px_28px_rgba(34,211,238,0.16)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(34,211,238,0.24)] active:translate-y-0 sm:mt-7"
+                    >
+                      {nextStep.action}<span aria-hidden="true" className="text-base transition-transform group-hover:translate-x-0.5">→</span>
+                    </button>
                   </div>
-                  <h3 className="max-w-md text-xl font-semibold tracking-tight text-white sm:text-2xl">{nextStep.title}</h3>
-                  <p className="mt-3 max-w-lg text-sm leading-6 text-slate-300">{nextStep.detail}</p>
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-300 to-teal-300 px-4 py-2.5 text-sm font-semibold text-[#06111d] shadow-lg shadow-cyan-950/20 transition hover:-translate-y-0.5 hover:from-cyan-200 hover:to-teal-200"
-                  >
-                    {nextStep.action}<span aria-hidden="true">→</span>
-                  </button>
+                  <div aria-hidden="true" className="relative hidden h-36 w-36 shrink-0 place-items-center sm:grid lg:mr-5 lg:h-44 lg:w-44">
+                    <span className="absolute inset-0 rounded-full border border-cyan-100/[0.11]" />
+                    <span className="absolute inset-4 rounded-full border border-cyan-100/[0.08]" />
+                    <span className="absolute inset-8 rounded-full border border-dashed border-cyan-100/[0.12]" />
+                    <span className="grid h-20 w-20 place-items-center rounded-[1.7rem] border border-cyan-100/20 bg-[#071a2a]/85 text-cyan-100 shadow-[0_0_45px_rgba(34,211,238,0.12)] lg:h-24 lg:w-24">
+                      {nextStep.section === "Withdrawals" ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.45" className="h-9 w-9 lg:h-11 lg:w-11"><path strokeLinecap="round" strokeLinejoin="round" d="M7 17 17 7M8 7h9v9" /></svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.45" className="h-9 w-9 lg:h-11 lg:w-11"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>
+                      )}
+                    </span>
+                    <span className="absolute right-1 top-5 h-2.5 w-2.5 rounded-full bg-teal-200 shadow-[0_0_14px_rgba(153,246,228,0.8)]" />
+                    <span className="absolute bottom-5 left-2 h-1.5 w-1.5 rounded-full bg-cyan-200/80" />
+                  </div>
                 </div>
               </article>
+            </section>
 
-              <article className="overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#0c2238] via-[#081a2c] to-[#061321] shadow-[0_16px_44px_rgba(0,0,0,0.20)] sm:rounded-3xl">
-                <header className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-5 py-4 sm:px-6 sm:py-5">
-                  <div>
-                    <h3 className="font-semibold text-white">Recent activity</h3>
-                    <p className="mt-1 text-xs text-slate-500">Updates from your account and support conversations</p>
-                  </div>
-                  <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-xs text-slate-400">{recentActivity.length} recent</span>
-                </header>
-                {recentActivity.length > 0 ? (
-                  <ol className="divide-y divide-white/[0.055] px-5 sm:px-6">
-                    {recentActivity.map((item) => {
-                      const activityIcon = item.kind === "notification" ? "♧" : item.kind === "withdrawal" ? "↗" : item.kind === "message" ? "↗" : "▤";
-                      const activityTone = item.kind === "notification" ? "border-amber-200/15 bg-amber-200/[0.06] text-amber-100" : item.kind === "withdrawal" ? "border-cyan-200/15 bg-cyan-200/[0.06] text-cyan-100" : item.kind === "message" ? "border-emerald-200/15 bg-emerald-200/[0.06] text-emerald-100" : "border-blue-200/15 bg-blue-200/[0.06] text-blue-100";
-                      return (
-                        <li key={item.id}>
-                          <button
-                            type="button"
-                            onClick={() => { selectSection(item.section); setSuccessMessage(""); setShowTicketForm(false); }}
-                            className="flex w-full min-w-0 items-start gap-3 py-4 text-left transition hover:bg-white/[0.02] sm:gap-4"
-                          >
-                            <span className={"mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm " + activityTone}>{activityIcon}</span>
-                            <span className="min-w-0 flex-1">
-                              <span className="flex flex-col justify-between gap-1 sm:flex-row sm:items-center sm:gap-3">
-                                <span className="truncate text-sm font-medium text-slate-100">{item.title}</span>
-                                <time className="shrink-0 text-[11px] text-slate-500" dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</time>
-                              </span>
-                              <span className="mt-1 block line-clamp-2 break-words text-xs leading-5 text-slate-400">{item.detail}</span>
-                            </span>
-                            <span aria-hidden="true" className="mt-1 text-slate-600">→</span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                ) : (
-                  <div className="flex min-h-48 flex-col items-center justify-center px-6 py-8 text-center">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-200/15 bg-cyan-200/[0.06] text-xl text-cyan-100">✦</span>
-                    <p className="mt-4 text-sm font-medium text-slate-200">Your activity will appear here</p>
-                    <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">Ticket replies, account notices, and withdrawal records will show up as they happen.</p>
-                  </div>
-                )}
-              </article>
+            <section className="mt-8" aria-labelledby="recent-activity-title">
+              <header className="mb-3 flex flex-wrap items-end justify-between gap-3 border-b border-white/[0.08] pb-4">
+                <div>
+                  <h3 id="recent-activity-title" className="text-lg font-semibold text-white">Recent activity</h3>
+                  <p className="mt-1 text-sm text-slate-400">Account, withdrawal, and support updates</p>
+                </div>
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-slate-400">{recentActivity.length} updates</span>
+              </header>
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-3 px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500 sm:grid-cols-[minmax(150px,0.85fr)_minmax(0,1.5fr)_minmax(120px,auto)] sm:px-4">
+                <span>Activity</span><span className="hidden sm:block">Details</span><span className="hidden sm:block">Date</span>
+              </div>
+              {recentActivity.length > 0 ? (
+                <ol className="scrollbar-hide max-h-[330px] divide-y divide-white/[0.07] overflow-y-auto overscroll-contain border-y border-white/[0.08] pr-1">
+                  {recentActivity.map((item) => {
+                    const activityIcon = item.kind === "notification" ? "♧" : item.kind === "withdrawal" ? "↗" : item.kind === "message" ? "↗" : "▤";
+                    const activityTone = item.kind === "notification" ? "border-amber-200/15 bg-amber-200/[0.06] text-amber-100" : item.kind === "withdrawal" ? "border-cyan-200/15 bg-cyan-200/[0.06] text-cyan-100" : item.kind === "message" ? "border-emerald-200/15 bg-emerald-200/[0.06] text-emerald-100" : "border-blue-200/15 bg-blue-200/[0.06] text-blue-100";
+                    return (
+                      <li key={item.id}>
+                        <button type="button" onClick={() => { selectSection(item.section); setSuccessMessage(""); setShowTicketForm(false); }} className="grid w-full grid-cols-[minmax(0,1fr)] items-center gap-1 px-2 py-3 text-left transition hover:bg-white/[0.025] sm:grid-cols-[minmax(150px,0.85fr)_minmax(0,1.5fr)_minmax(120px,auto)] sm:gap-4 sm:px-4 sm:py-4">
+                          <span className="flex min-w-0 items-center gap-3">
+                            <span className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm " + activityTone}>{activityIcon}</span>
+                            <span className="truncate text-sm font-medium text-slate-100">{item.title}</span>
+                          </span>
+                          <span className="line-clamp-2 break-words pl-12 text-xs leading-5 text-slate-400 sm:pl-0">{item.detail}</span>
+                          <time className="pl-12 text-[11px] text-slate-500 sm:pl-0 sm:text-right" dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</time>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : (
+                <p className="border-y border-white/[0.08] py-8 text-center text-sm text-slate-400">Your account activity will appear here.</p>
+              )}
             </section>
 
             <section className="mt-8">
@@ -1666,6 +1896,23 @@ Custodial<span className="text-cyan-300">Support</span>
 
         {/* Withdrawals */}
         {activeSection === "Withdrawals" && (
+          <div className="space-y-5">
+          <section className="relative isolate overflow-hidden rounded-2xl border border-cyan-200/[0.12] bg-[radial-gradient(ellipse_at_top_right,rgba(34,211,238,0.12),transparent_42%),linear-gradient(125deg,#10263b,#0a1b2d_58%,#071625)] px-5 py-5 shadow-[0_16px_44px_rgba(0,0,0,0.18)] sm:flex sm:items-center sm:justify-between sm:gap-6 sm:px-7 sm:py-6">
+            <div className="pointer-events-none absolute -right-8 -top-16 size-48 rounded-full border border-cyan-200/[0.08] sm:size-56" aria-hidden="true" />
+            <div className="relative min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-cyan-200/75">Withdrawal center</p>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-white sm:text-2xl">Track your withdrawals</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">Review request amounts, destination wallets, and the latest status for each withdrawal.</p>
+            </div>
+            <div className="relative mt-4 flex shrink-0 items-center gap-2 sm:mt-0">
+              <span className="grid size-10 place-items-center rounded-xl border border-cyan-200/15 bg-cyan-200/[0.07] text-cyan-100" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-5"><path strokeLinecap="round" strokeLinejoin="round" d="M4 7.5h16M6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11A2.5 2.5 0 0 1 6.5 4Z"/><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h8m-8 4h5"/></svg>
+              </span>
+              <span className="text-xs text-slate-400">{transactions.length} {transactions.length === 1 ? "record" : "records"}</span>
+              {pendingOrProcessingWithdrawalCount > 0 && <span className="rounded-full border border-amber-200/20 bg-amber-200/[0.08] px-2.5 py-1 text-xs font-semibold text-amber-100">{pendingOrProcessingWithdrawalCount} active</span>}
+            </div>
+          </section>
+
           <section className="overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#0c2238] via-[#081a2c] to-[#061321] shadow-[0_16px_44px_rgba(0,0,0,0.20)]">
             <div className="flex flex-col justify-between gap-4 border-b border-white/[0.08] p-5 sm:flex-row sm:items-center sm:p-6">
               <div>
@@ -1750,13 +1997,14 @@ Custodial<span className="text-cyan-300">Support</span>
               ) : null}
             </div>
           </section>
+          </div>
         )}
 
         {/* Support tickets */}
         {activeSection === "Support tickets" && (
-          <section className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
-            <div className="rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#0c2238] via-[#081a2c] to-[#061321] shadow-[0_16px_44px_rgba(0,0,0,0.20)] p-5 sm:p-7">
-              <div className="flex items-start justify-between gap-4">
+          <section className={`${isTicketChatOpen ? "flex min-h-0 flex-1 flex-col" : "grid items-start gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]"}`}>
+            <div className={`rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#0c2238] via-[#081a2c] to-[#061321] shadow-[0_16px_44px_rgba(0,0,0,0.20)] p-5 sm:p-7 ${isTicketChatOpen ? "flex h-full min-h-0 flex-col overflow-hidden !rounded-none !border-0 !p-0" : ""}`}>
+              <div className={`flex items-start justify-between gap-4 ${selectedTicketId ? "hidden" : ""}`}>
                 <div>
                   <h2 className="text-lg font-semibold">
                     Your support tickets
@@ -1771,18 +2019,18 @@ Custodial<span className="text-cyan-300">Support</span>
                 </span>
               </div>
 
-              {successMessage && (
+              {!selectedTicketId && successMessage && (
                 <p role="status" className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.06] p-3 text-sm text-emerald-200">
                   {successMessage}
                 </p>
               )}
-              {formError && !showTicketForm && (
+              {!selectedTicketId && formError && !showTicketForm && (
                 <p role="alert" className="mt-4 rounded-xl border border-rose-300/20 bg-rose-300/[0.06] p-3 text-sm text-rose-200">
                   {formError}
                 </p>
               )}
 
-              {showTicketForm && (
+              {!selectedTicketId && showTicketForm && (
                 <form
                   onSubmit={handleTicketSubmit}
                   className="mt-6 space-y-5 border-t border-white/[0.08] pt-6"
@@ -1962,7 +2210,7 @@ Custodial<span className="text-cyan-300">Support</span>
                 </form>
               )}
 
-              <div className="mt-6 space-y-3">
+              <div className={`mt-6 space-y-3 ${selectedTicketId ? "hidden" : ""}`}>
                 {tickets.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-white/10 p-6 text-center">
                     <span className="text-2xl text-slate-500">▤</span>
@@ -2075,31 +2323,31 @@ Custodial<span className="text-cyan-300">Support</span>
               </div>
 
               {selectedTicketId && tickets.some((ticket) => ticket.id === selectedTicketId) && (
-                <section className="mt-6 rounded-xl border border-cyan-300/15 bg-[#071725]/70 p-4 sm:p-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                <section className={`rounded-xl border border-cyan-300/15 bg-[#071725]/70 p-4 sm:p-5 ${isTicketChatOpen ? "flex min-h-0 flex-1 flex-col overflow-hidden !rounded-none !border-0 !p-0" : "mt-6"}`}>
+                  <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-3 sm:px-6">
                     <div>
                       <h3 className="font-semibold text-white">Ticket conversation</h3>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {tickets.find((ticket) => ticket.id === selectedTicketId)?.subject}
-                      </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => void loadClientTicketMessages(selectedTicketId)}
-                      className="text-xs text-cyan-200 hover:text-cyan-100"
-                    >
-                      Refresh conversation
-                    </button>
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedTicketId(null); setTicketMessages([]); }}
+                        aria-label="Close conversation"
+                        className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-lg text-slate-300 transition hover:border-cyan-200/25 hover:bg-white/[.04]"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
 
                   {loadingTicketMessages ? (
-                    <p className="py-6 text-sm text-slate-400">Loading conversation...</p>
+                    <p className={`py-6 text-sm text-slate-400 ${isTicketChatOpen ? "flex-1 px-4 sm:px-6" : ""}`}>Loading conversation...</p>
                   ) : ticketMessages.length === 0 ? (
-                    <p className="py-6 text-sm text-slate-400">
+                    <p className={`py-6 text-sm text-slate-400 ${isTicketChatOpen ? "flex-1 px-4 sm:px-6" : ""}`}>
                       No replies yet. You can send a message to the support team below.
                     </p>
                   ) : (
-                    <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto scrollbar-hide">
+                    <div className={`mt-4 space-y-3 overflow-y-auto overscroll-contain scrollbar-hide ${isTicketChatOpen ? "min-h-0 flex-1 px-4 sm:px-6" : "max-h-[420px]"}`}>
                       {ticketMessages.map((message) => {
                         const isOwnMessage = message.sender_id === currentUserId;
                         const content = parseTicketMessage(message.message);
@@ -2162,12 +2410,11 @@ Custodial<span className="text-cyan-300">Support</span>
                                     This photo is unavailable.
                                   </p>
                                 ) : photoUrl ? (
-                                  <a
-                                    href={photoUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="mt-2 block overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-                                    aria-label="Open attached photo in a new tab"
+                                  <button
+                                    type="button"
+                                    onClick={() => setTicketPhotoViewerUrl(photoUrl)}
+                                    className="mt-2 block max-w-full overflow-hidden rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                                    aria-label="View attached photo in chat"
                                   >
                                     <img
                                       src={photoUrl}
@@ -2175,7 +2422,7 @@ Custodial<span className="text-cyan-300">Support</span>
                                       loading="lazy"
                                       className="max-h-72 w-auto max-w-full rounded-xl object-contain"
                                     />
-                                  </a>
+                                  </button>
                                 ) : content.photoPath in ticketPhotoUrls ? (
                                   <p className="mt-2 text-xs text-slate-400">
                                     This photo is unavailable.
@@ -2198,19 +2445,8 @@ Custodial<span className="text-cyan-300">Support</span>
                     </div>
                   )}
 
-                  <form onSubmit={handleClientTicketReply} className="mt-5 space-y-3 border-t border-white/[0.07] pt-5">
-                    <label htmlFor="ticket-reply" className="block text-sm font-medium text-white">
-                      Reply to support
-                    </label>
-                    <textarea
-                      id="ticket-reply"
-                      value={ticketReply}
-                      onChange={(event) => setTicketReply(event.target.value)}
-                      rows={4}
-                      maxLength={10000}
-                      placeholder="Write your message..."
-                      className="w-full resize-y rounded-xl border border-white/10 bg-[#07111f] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-600 focus:border-cyan-300/50"
-                    />
+                  <form onSubmit={handleClientTicketReply} className={`shrink-0 border-t border-white/[0.07] bg-gradient-to-b from-[#0b1c2b]/95 to-[#071421] px-4 pb-4 pt-4 sm:px-6 sm:pb-5 ${isTicketChatOpen ? "mt-0" : "mt-5"}`}>
+                    <label htmlFor="ticket-reply" className="sr-only">Write a message to support</label>
                     <input
                       ref={ticketPhotoInputRef}
                       type="file"
@@ -2219,47 +2455,47 @@ Custodial<span className="text-cyan-300">Support</span>
                       onChange={handleTicketPhotoSelection}
                       aria-label="Choose a photo attachment"
                     />
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <button
-                        type="button"
-                        onClick={() => ticketPhotoInputRef.current?.click()}
-                        disabled={sendingTicketReply}
-                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3.5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-cyan-300/30 hover:bg-cyan-300/[.06] disabled:opacity-50"
-                      >
-                        <span aria-hidden="true">▧</span>
-                        Attach photo
+                    {ticketReplyPhoto && (
+                      <div className="mb-2 flex min-w-0 items-center gap-2 text-xs text-slate-400">
+                        <span className="max-w-[220px] truncate">{ticketReplyPhoto.name}</span>
+                        <button type="button" onClick={() => setTicketReplyPhoto(null)} disabled={sendingTicketReply} className="shrink-0 text-rose-200 hover:text-rose-100 disabled:opacity-50">Remove</button>
+                      </div>
+                    )}
+                    <div className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-white/[0.11] bg-[#17212b] px-3 shadow-inner shadow-black/20 transition focus-within:border-cyan-200/40 focus-within:ring-2 focus-within:ring-cyan-300/10">
+                      <button type="button" onClick={() => ticketPhotoInputRef.current?.click()} disabled={sendingTicketReply} aria-label="Attach a photo" title="Attach a photo" className="grid size-10 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-white/[0.06] hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/50 disabled:cursor-not-allowed disabled:opacity-50">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="size-6" stroke="currentColor" strokeWidth="1.8">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m7.5 12.75 6.97-6.97a3 3 0 1 1 4.24 4.24l-8.03 8.03a4.5 4.5 0 0 1-6.36-6.36l8.13-8.13" />
+                        </svg>
                       </button>
-                      {ticketReplyPhoto && (
-                        <div className="flex min-w-0 items-center gap-2 text-xs text-slate-400">
-                          <span className="max-w-[220px] truncate">{ticketReplyPhoto.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => setTicketReplyPhoto(null)}
-                            disabled={sendingTicketReply}
-                            className="shrink-0 text-rose-200 hover:text-rose-100 disabled:opacity-50"
-                          >
-                            Remove
-                          </button>
-                        </div>
+                      <textarea
+                        id="ticket-reply"
+                        value={ticketReply}
+                        onChange={(event) => handleClientTicketReplyChange(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            if (ticketReply.trim() || ticketReplyPhoto) event.currentTarget.form?.requestSubmit();
+                          }
+                        }}
+                        rows={1}
+                        maxLength={10000}
+                        placeholder="Write a message..."
+                        className="max-h-28 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-1 py-2.5 text-sm leading-5 text-white outline-none placeholder:text-slate-400"
+                      />
+                      {(ticketReply.trim() || ticketReplyPhoto) && (
+                        <button type="submit" disabled={sendingTicketReply} aria-label={sendingTicketReply ? "Sending message" : "Send message"} title="Send message" className="grid size-10 shrink-0 place-items-center rounded-full bg-emerald-400 text-[#062017] shadow-md shadow-emerald-950/25 transition hover:bg-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-100/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#17212b] disabled:cursor-not-allowed disabled:opacity-60">
+                          {sendingTicketReply ? <span className="text-xs font-bold">…</span> : (
+                            <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className="size-5"><path d="M3.4 20.7 21 12 3.4 3.3l.1 6.8 12 1.9-12 1.9-.1 6.8Z" /></svg>
+                          )}
+                        </button>
                       )}
                     </div>
-                    <button
-                      type="submit"
-                      disabled={sendingTicketReply || (!ticketReply.trim() && !ticketReplyPhoto)}
-                      className="w-full rounded-xl bg-gradient-to-r from-cyan-300 to-teal-300 px-4 py-3 text-sm font-semibold text-[#06111d] transition hover:from-cyan-200 hover:to-teal-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {sendingTicketReply
-                        ? "Sending..."
-                        : ticketReplyPhoto && !ticketReply.trim()
-                          ? "Send photo"
-                          : "Send reply"}
-                    </button>
                   </form>
                 </section>
               )}
             </div>
 
-            <aside className="rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#0c2238] via-[#081a2c] to-[#061321] shadow-[0_16px_44px_rgba(0,0,0,0.20)] p-5 sm:p-6">
+            <aside className={`rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#0c2238] via-[#081a2c] to-[#061321] shadow-[0_16px_44px_rgba(0,0,0,0.20)] p-5 sm:p-6 ${selectedTicketId ? "hidden" : ""}`}>
               <h3 className="font-semibold">Before you contact support</h3>
               <div className="mt-5 space-y-4">
                 {[
@@ -2309,13 +2545,13 @@ Custodial<span className="text-cyan-300">Support</span>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-200/75">Account updates</p>
                   <h2 className="mt-1 text-lg font-semibold tracking-tight text-white sm:text-xl">Notifications</h2>
                   <p className="mt-1 text-sm leading-5 text-slate-400">
-                    {successMessage || (notifications.length ? "Updates and messages for your account." : "Important updates for your account will appear here.")}
+                    {successMessage || (notifications.some((item) => !item.is_popup) ? "Updates and messages for your account." : "Important updates for your account will appear here.")}
                   </p>
                 </div>
               </div>
               <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-cyan-200/15 bg-cyan-300/[0.06] px-3 py-1.5 text-xs font-medium text-cyan-100">
                 <span className="h-1.5 w-1.5 rounded-full bg-cyan-200" />
-                {notifications.length} {notifications.length === 1 ? "notice" : "notices"}
+                {notifications.filter((item) => !item.is_popup).length} {notifications.filter((item) => !item.is_popup).length === 1 ? "notice" : "notices"}
               </span>
             </header>
 
@@ -2325,9 +2561,9 @@ Custodial<span className="text-cyan-300">Support</span>
                 {notificationReadError}
               </p>
             )}
-            {notifications.length > 0 ? (
+            {notifications.some((item) => !item.is_popup) ? (
               <div className="space-y-3">
-                {notifications.map((item) => {
+                {notifications.filter((item) => !item.is_popup).map((item) => {
                   const appearance = item.type === "success"
                     ? { label: "Success", icon: "✓", color: "emerald" }
                     : item.type === "warning"
@@ -2349,6 +2585,7 @@ Custodial<span className="text-cyan-300">Support</span>
                       : appearance.color === "rose"
                         ? "bg-rose-300"
                         : "bg-cyan-300";
+                  const needsFullMessage = item.message.length > 220;
 
                   return (
                     <article
@@ -2382,7 +2619,16 @@ Custodial<span className="text-cyan-300">Support</span>
                               })}
                             </time>
                           </div>
-                          <p className="mt-2.5 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200 sm:text-[15px]">{item.message}</p>
+                          <p className={`mt-2.5 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200 sm:text-[15px] ${needsFullMessage ? "line-clamp-3" : ""}`}>{item.message}</p>
+                          {needsFullMessage && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedNotification(item)}
+                              className="mt-2 inline-flex min-h-9 items-center gap-2 rounded-lg border border-cyan-200/15 bg-cyan-200/[0.06] px-3 text-xs font-semibold text-cyan-100 transition hover:border-cyan-200/30 hover:bg-cyan-200/[0.1]"
+                            >
+                              View all <span aria-hidden="true">→</span>
+                            </button>
+                          )}
                           <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-3">
                             <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${tone}`}>
                               {appearance.label}
@@ -2412,36 +2658,75 @@ Custodial<span className="text-cyan-300">Support</span>
 
         {/* Settings */}
         {activeSection === "Settings" && (
-          <section className="max-w-4xl rounded-2xl border border-sky-400/15 bg-gradient-to-br from-[#071a2d]/95 via-[#08192a]/95 to-[#061321] p-5 shadow-[0_14px_38px_rgba(0,0,0,0.18)] sm:rounded-3xl sm:p-7">
-            <h2 className="text-lg font-semibold">Account settings</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              Your account details are provided by Supabase Authentication.
-            </p>
+          <section className="mx-auto w-full max-w-5xl overflow-hidden rounded-3xl border border-cyan-200/[0.13] bg-[radial-gradient(ellipse_at_top_right,rgba(34,211,238,0.09),transparent_38%),linear-gradient(145deg,#0b2033,#081827_58%,#061321)] shadow-[0_24px_70px_rgba(0,0,0,0.25)]">
+            <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.08] px-5 py-5 sm:px-7 sm:py-6">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-cyan-200/75">Your account</p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-white sm:text-2xl">Settings & security</h2>
+                <p className="mt-1 text-sm text-slate-400">Manage your profile, account access, and updates.</p>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200/15 bg-emerald-200/[0.06] px-3 py-1.5 text-xs font-medium text-emerald-100">
+                <span className="size-1.5 rounded-full bg-emerald-300" /> Account connected
+              </span>
+            </header>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.035] to-white/[0.01] p-4 transition-colors duration-200 hover:border-cyan-200/[0.16] sm:p-5">
-                <p className="text-xs text-slate-500">Full name</p>
-                <p className="mt-2 text-sm text-white">{userName}</p>
-              </div>
-              <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.035] to-white/[0.01] p-4 transition-colors duration-200 hover:border-cyan-200/[0.16] sm:p-5">
-                <p className="text-xs text-slate-500">Email address</p>
-                <p className="mt-2 break-all text-sm text-white">
-                  {userEmail}
-                </p>
-              </div>
+            <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[1.15fr_.85fr]">
+              <section className="rounded-2xl border border-white/[0.08] bg-[#071726]/65 p-4 sm:p-5" aria-labelledby="profile-details-heading">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-cyan-200/15 bg-cyan-200/[0.08] text-base font-semibold text-cyan-100">{(userName.charAt(0) || "U").toUpperCase()}</span>
+                  <div className="min-w-0">
+                    <h3 id="profile-details-heading" className="font-semibold text-white">Profile details</h3>
+                    <p className="text-xs text-slate-400">Your account identity</p>
+                  </div>
+                </div>
+                <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="min-w-0 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3.5 py-3">
+                    <dt className="text-[10px] font-semibold uppercase tracking-[.13em] text-slate-500">Full name</dt>
+                    <dd className="mt-1.5 break-words text-sm font-medium text-white">{userName || "Name not provided"}</dd>
+                  </div>
+                  <div className="min-w-0 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3.5 py-3">
+                    <dt className="text-[10px] font-semibold uppercase tracking-[.13em] text-slate-500">Sign-in email</dt>
+                    <dd className="mt-1.5 break-all text-sm font-medium text-white">{userEmail || "Email unavailable"}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section className="rounded-2xl border border-white/[0.08] bg-[#071726]/65 p-4 sm:p-5" aria-labelledby="security-heading">
+                <h3 id="security-heading" className="font-semibold text-white">Account security</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-400">Keep your sign-in secure. We never display or store a readable password here.</p>
+                <Link href="/forgot-password?returnTo=settings" className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-cyan-200/20 bg-cyan-200/[0.06] px-3.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-200/[0.12]">
+                  Reset password <span aria-hidden="true">→</span>
+                </Link>
+              </section>
+
+              <section className="rounded-2xl border border-white/[0.08] bg-[#071726]/65 p-4 sm:p-5" aria-labelledby="updates-heading">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 id="updates-heading" className="font-semibold text-white">Account updates</h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">Review support replies, account notices, and withdrawal updates.</p>
+                  </div>
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-cyan-200/15 bg-cyan-200/[0.07] text-cyan-100" aria-hidden="true">♧</span>
+                </div>
+                <button type="button" onClick={() => { selectSection("Notifications"); setSuccessMessage(""); }} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/[0.09] px-3.5 text-xs font-semibold text-slate-200 transition hover:border-cyan-200/20 hover:bg-white/[0.035]">
+                  View notifications
+                  {unreadNotificationCount > 0 && <span className="rounded-full bg-cyan-200/15 px-2 py-0.5 text-[10px] text-cyan-100">{unreadNotificationCount} new</span>}
+                </button>
+              </section>
+
+              <section className="flex flex-col justify-between gap-4 rounded-2xl border border-rose-200/10 bg-rose-200/[0.025] p-4 sm:flex-row sm:items-center sm:p-5" aria-labelledby="signout-heading">
+                <div>
+                  <h3 id="signout-heading" className="font-semibold text-white">Session</h3>
+                  <p className="mt-1 text-xs text-slate-400">Sign out when you’re finished using this device.</p>
+                </div>
+                <button onClick={handleSignOut} disabled={signingOut} className="min-h-10 shrink-0 rounded-xl border border-rose-300/20 px-4 text-xs font-semibold text-rose-200 transition hover:bg-rose-300/[0.08] disabled:opacity-50">
+                  {signingOut ? "Signing out..." : "Sign out"}
+                </button>
+              </section>
             </div>
-
-            <button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className="mt-6 rounded-2xl border border-rose-400/25 px-5 py-3 text-sm font-medium text-rose-300 transition hover:bg-rose-400/[0.07] disabled:opacity-50"
-            >
-              {signingOut ? "Signing out..." : "Sign out"}
-            </button>
           </section>
         )}
 
-        <footer className="mt-10 border-t border-white/[0.08] pt-5 text-xs leading-6 text-slate-500">
+        <footer className={`mt-10 border-t border-white/[0.08] pt-5 text-xs leading-6 text-slate-500 ${isTicketChatOpen ? "hidden" : ""}`}>
           <p>
             CustodialSupport · Keep your account credentials private.
           </p>
@@ -2449,6 +2734,64 @@ Custodial<span className="text-cyan-300">Support</span>
       </div>
     </div>
   </div>
+  {ticketPhotoViewerUrl && (
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setTicketPhotoViewerUrl(null);
+      }}
+    >
+      <section role="dialog" aria-modal="true" aria-label="Attached ticket photo" className="relative flex max-h-[92dvh] w-full max-w-5xl items-center justify-center rounded-2xl border border-white/10 bg-[#071725] p-3 shadow-[0_30px_100px_rgba(0,0,0,.65)] sm:p-5">
+        <button type="button" onClick={() => setTicketPhotoViewerUrl(null)} aria-label="Close photo viewer" className="absolute right-3 top-3 z-10 grid h-10 w-10 place-items-center rounded-xl border border-white/15 bg-[#07111f]/90 text-xl text-white hover:bg-white/10">×</button>
+        <img src={ticketPhotoViewerUrl} alt="Attached photo from the support conversation" className="max-h-[84dvh] max-w-full rounded-xl object-contain" />
+      </section>
+    </div>
+  )}
+  {selectedNotification && (
+    <div
+      className="fixed inset-0 z-[115] flex items-center justify-center bg-slate-950/85 p-3 backdrop-blur-md sm:p-6"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setSelectedNotification(null);
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="full-notification-title"
+        className="flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-cyan-200/15 bg-[radial-gradient(ellipse_at_top_right,rgba(34,211,238,0.1),transparent_42%),linear-gradient(145deg,#0c2238,#071725)] shadow-[0_30px_100px_rgba(0,0,0,.65)]"
+      >
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-white/[0.08] p-5 sm:p-6">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-cyan-200/80">Account notification</p>
+            <h2 id="full-notification-title" className="mt-2 break-words text-xl font-semibold text-white sm:text-2xl">{selectedNotification.title}</h2>
+            <time className="mt-2 block text-xs text-slate-400">
+              {new Date(selectedNotification.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+            </time>
+          </div>
+          <button type="button" onClick={() => setSelectedNotification(null)} aria-label="Close notification" className="grid size-10 shrink-0 place-items-center rounded-xl border border-white/10 text-lg text-slate-300 transition hover:border-cyan-200/25 hover:bg-white/[.05]">×</button>
+        </header>
+        <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6">
+          <div className="min-h-32 rounded-2xl border border-white/[0.08] bg-[#102438]/80 p-5 sm:p-6">
+            <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-200 sm:text-base sm:leading-8">{selectedNotification.message}</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  )}
+  {popupNotification && (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm" role="presentation">
+      <section role="dialog" aria-modal="true" aria-labelledby="client-announcement-title" className="w-full max-w-4xl rounded-3xl border border-cyan-200/15 bg-[#081a2a] p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] sm:p-8">
+        <header className="flex items-start justify-between gap-5">
+          <div><p className="text-xs font-semibold uppercase tracking-[.2em] text-cyan-300">CustodialSupport · Announcement</p><h2 id="client-announcement-title" className="mt-2 text-xl font-semibold text-white sm:text-2xl">{popupNotification.title}</h2></div>
+          <button type="button" aria-label="Close announcement" onClick={() => void dismissPopupNotification()} className="grid size-11 shrink-0 place-items-center rounded-xl border border-white/10 text-lg text-slate-300 transition hover:bg-white/[.05]">×</button>
+        </header>
+        <div className="my-6 border-t border-white/[.08]" />
+        <div className="min-h-28 rounded-2xl border border-white/[.07] bg-white/[.02] p-5 sm:p-6"><p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-200 sm:text-base">{popupNotification.message}</p></div>
+      </section>
+    </div>
+  )}
 </main>
 
 );

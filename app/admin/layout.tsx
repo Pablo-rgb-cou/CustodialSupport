@@ -6,14 +6,45 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const navItems = [
-  { label: "Overview", href: "/admin", icon: "⌂" },
-  { label: "Support tickets", href: "/admin/tickets", icon: "▤" },
-  { label: "Withdrawals", href: "/admin/withdrawals", icon: "↗" },
+  { label: "Overview", href: "/admin", icon: "home" },
+  { label: "Support tickets", href: "/admin/tickets", icon: "tickets" },
+  { label: "Withdrawals", href: "/admin/withdrawals", icon: "withdrawals" },
   { label: "Clients", href: "/admin/clients", icon: "♙" },
-  { label: "Notifications", href: "/admin/notifications", icon: "♧" },
+  { label: "Notifications", href: "/admin/notifications", icon: "notifications" },
   { label: "Activity log", href: "/admin/activity", icon: "◷" },
-  { label: "Settings", href: "/admin/settings", icon: "⚙" },
+  { label: "Settings", href: "/admin/settings", icon: "settings" },
 ];
+
+const adminNavigationIconTileColors: Record<string, string> = {
+  home: "border-cyan-300/20 bg-cyan-300/[0.09] text-cyan-200",
+  withdrawals: "border-emerald-300/20 bg-emerald-300/[0.09] text-emerald-200",
+  tickets: "border-sky-300/20 bg-sky-300/[0.09] text-sky-200",
+  notifications: "border-amber-300/20 bg-amber-300/[0.09] text-amber-200",
+  settings: "border-violet-300/20 bg-violet-300/[0.09] text-violet-200",
+  "♙": "border-fuchsia-300/20 bg-fuchsia-300/[0.08] text-fuchsia-200",
+  "◷": "border-indigo-300/20 bg-indigo-300/[0.08] text-indigo-200",
+};
+
+function AdminNavigationIcon({ icon }: { icon: string }) {
+  const common = { viewBox: "0 0 24 24", fill: "currentColor", className: "h-5 w-5", "aria-hidden": true as const };
+
+  if (icon === "home") {
+    return <svg {...common}><path d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.06l8.69-8.689Z" /><path d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z" /></svg>;
+  }
+  if (icon === "withdrawals") {
+    return <svg {...common}><path d="M4.5 3.75a3 3 0 0 0-3 3v.75h21v-.75a3 3 0 0 0-3-3h-15Z" /><path fillRule="evenodd" clipRule="evenodd" d="M22.5 9.75h-21v7.5a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-7.5Zm-18 3.75a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Zm.75 2.25a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Z" /></svg>;
+  }
+  if (icon === "tickets") {
+    return <svg {...common}><path d="M4.913 2.658c2.075-.27 4.19-.408 6.337-.408 2.147 0 4.262.139 6.337.408 1.922.25 3.291 1.861 3.405 3.727a4.403 4.403 0 0 0-1.032-.211 50.89 50.89 0 0 0-8.42 0c-2.358.196-4.04 2.19-4.04 4.434v4.286a4.47 4.47 0 0 0 2.433 3.984L7.28 21.53A.75.75 0 0 1 6 21v-4.03a48.527 48.527 0 0 1-1.087-.128C2.905 16.58 1.5 14.833 1.5 12.862V6.638c0-1.97 1.405-3.718 3.413-3.979Z" /><path d="M15.75 7.5c-1.376 0-2.739.057-4.086.169C10.124 7.797 9 9.103 9 10.609v4.285c0 1.507 1.128 2.814 2.67 2.94 1.243.102 2.5.157 3.768.165l2.782 2.781a.75.75 0 0 0 1.28-.53v-2.39l.33-.026c1.542-.125 2.67-1.433 2.67-2.94v-4.286c0-1.505-1.125-2.811-2.664-2.94A49.392 49.392 0 0 0 15.75 7.5Z" /></svg>;
+  }
+  if (icon === "notifications") {
+    return <svg {...common}><path fillRule="evenodd" clipRule="evenodd" d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 0 1-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 1 1-7.48 0 24.585 24.585 0 0 1-4.831-1.244.75.75 0 0 1-.298-1.205A8.217 8.217 0 0 0 5.25 9.75V9Zm4.502 8.9a2.25 2.25 0 1 0 4.496 0 25.057 25.057 0 0 1-4.496 0Z" /></svg>;
+  }
+  if (icon === "settings") {
+    return <svg {...common}><path fillRule="evenodd" clipRule="evenodd" d="M11.828 2.25c-.916 0-1.699.663-1.85 1.567l-.091.549a.798.798 0 0 1-.517.608 7.45 7.45 0 0 0-.478.198.798.798 0 0 1-.796-.064l-.453-.324a1.875 1.875 0 0 0-2.416.2l-.243.243a1.875 1.875 0 0 0-.2 2.416l.324.453a.798.798 0 0 1 .064.796 7.448 7.448 0 0 0-.198.478.798.798 0 0 1-.608.517l-.55.092a1.875 1.875 0 0 0-1.566 1.849v.344c0 .916.663 1.699 1.567 1.85l.549.091c.281.047.508.25.608.517.06.162.127.321.198.478a.798.798 0 0 1-.064.796l-.324.453a1.875 1.875 0 0 0 .2 2.416l.243.243c.648.648 1.67.733 2.416.2l.453-.324a.798.798 0 0 1 .796-.064c.157.071.316.137.478.198.267.1.47.327.517.608l.092.55c.15.903.932 1.566 1.849 1.566h.344c.916 0 1.699-.663 1.85-1.567l.091-.549a.798.798 0 0 1 .517-.608 7.52 7.52 0 0 0 .478-.198.798.798 0 0 1 .796.064l.453.324a1.875 1.875 0 0 0 2.416-.2l.243-.243c.648-.648.733-1.67.2-2.416l-.324-.453a.798.798 0 0 1-.064-.796c.071-.157.137-.316.198-.478.1-.267.327-.47.608-.517l.55-.091a1.875 1.875 0 0 0 1.566-1.85v-.344c0-.916-.663-1.699-1.567-1.85l-.549-.091a.798.798 0 0 1-.608-.517 7.507 7.507 0 0 0-.198-.478.798.798 0 0 1 .064-.796l.324-.453a1.875 1.875 0 0 0-.2-2.416l-.243-.243a1.875 1.875 0 0 0-2.416-.2l-.453.324a.798.798 0 0 1-.796.064 7.462 7.462 0 0 0-.478-.198.798.798 0 0 1-.517-.608l-.091-.55a1.875 1.875 0 0 0-1.85-1.566h-.344ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" /></svg>;
+  }
+  return <span aria-hidden="true">{icon}</span>;
+}
 
 export default function AdminLayout({
   children,
@@ -315,15 +346,7 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen bg-[#04101d] text-slate-100 lg:flex">
-      <div
-        className="pointer-events-none fixed inset-0 opacity-[0.13]"
-        aria-hidden="true"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(69,160,194,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(69,160,194,.14) 1px, transparent 1px)",
-          backgroundSize: "36px 36px",
-        }}
-      />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_70%_0%,rgba(14,165,233,0.08),transparent_42%),radial-gradient(ellipse_at_5%_65%,rgba(20,184,166,0.045),transparent_34%)]" aria-hidden="true" />
 
       {menuOpen && (
         <button
@@ -388,13 +411,9 @@ export default function AdminLayout({
                 }`}
               >
                 <span
-                  className={`grid h-8 w-8 place-items-center rounded-lg text-lg ${
-                    active
-                      ? "bg-cyan-200/10 text-cyan-200"
-                      : "bg-white/[0.035] text-slate-400 group-hover:text-slate-200"
-                  }`}
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-lg shadow-[inset_0_1px_0_rgba(255,255,255,.04)] ${adminNavigationIconTileColors[item.icon] ?? "border-slate-300/20 bg-slate-300/[0.07] text-slate-300"}`}
                 >
-                  {item.icon}
+                  <AdminNavigationIcon icon={item.icon} />
                 </span>
 
                 <span className="flex-1">{item.label}</span>
@@ -437,7 +456,7 @@ export default function AdminLayout({
       </aside>
 
       <div className="relative min-w-0 flex-1 lg:ml-[260px]">
-        <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-white/[0.07] bg-[#04101d]/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-white/[0.07] bg-[#04101d]/95 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <button
               onClick={() => setMenuOpen(true)}

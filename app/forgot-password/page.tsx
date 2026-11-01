@@ -1,7 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function ForgotPasswordPage() {
@@ -9,6 +8,13 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [returnToSettings, setReturnToSettings] = useState(false);
+
+  useEffect(() => {
+    setReturnToSettings(
+      new URLSearchParams(window.location.search).get("returnTo") === "settings"
+    );
+  }, []);
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -20,7 +26,7 @@ export default function ForgotPasswordPage() {
     try {
       const { error: resetError } =
         await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${window.location.origin}/reset-password${returnToSettings ? "?returnTo=settings" : ""}`,
         });
 
       if (resetError) {
@@ -39,12 +45,12 @@ export default function ForgotPasswordPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#07111f] px-5 py-12 text-white">
       <section className="w-full max-w-md rounded-2xl border border-white/10 bg-white/[.04] p-7 sm:p-9">
-        <Link
-          href="/login"
+        <a
+          href={returnToSettings ? "/dashboard?section=Settings" : "/login"}
           className="text-sm text-cyan-300 hover:text-cyan-200"
         >
-          ← Back to sign in
-        </Link>
+          {returnToSettings ? "← Back to settings" : "← Back to sign in"}
+        </a>
 
         <p className="mt-7 text-xs font-semibold uppercase tracking-[.2em] text-cyan-300">
           Account recovery
@@ -82,13 +88,23 @@ export default function ForgotPasswordPage() {
           )}
 
           {sent && (
-            <p
+            <div
               role="status"
-              className="rounded-xl border border-emerald-300/20 bg-emerald-300/[.06] p-3 text-sm text-emerald-200"
+              className="space-y-3 rounded-xl border border-emerald-300/20 bg-emerald-300/[.06] p-3 text-sm text-emerald-200"
             >
-              If an account exists with this email address, you will
-              receive password reset instructions.
-            </p>
+              <p>
+                If an account exists with this email address, you will
+                receive password reset instructions.
+              </p>
+              {returnToSettings && (
+                <a
+                  href="/dashboard?section=Settings"
+                  className="inline-flex font-semibold text-cyan-200 underline-offset-4 hover:underline"
+                >
+                  Return to settings
+                </a>
+              )}
+            </div>
           )}
 
           <button

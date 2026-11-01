@@ -16,9 +16,13 @@ export default function ResetPasswordPage() {
   const [sessionReady, setSessionReady] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [returnToSettings, setReturnToSettings] = useState(false);
 
   useEffect(() => {
     let active = true;
+    setReturnToSettings(
+      new URLSearchParams(window.location.search).get("returnTo") === "settings"
+    );
 
     const {
       data: { subscription },
@@ -124,10 +128,10 @@ export default function ResetPasswordPage() {
         "Your password has been updated successfully. You can now sign in."
       );
 
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
 
       setTimeout(() => {
-        router.replace("/admin/login");
+        router.replace("/login");
       }, 2000);
     } catch (err) {
       console.error("Password reset error:", err);
@@ -154,12 +158,12 @@ export default function ResetPasswordPage() {
       <div className="pointer-events-none absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
 
       <section className="relative w-full max-w-md rounded-3xl border border-white/10 bg-[#0a1b2b]/95 p-7 shadow-2xl shadow-black/30 sm:p-10">
-        <Link
-          href="/admin/login"
+        <a
+          href={returnToSettings ? "/dashboard?section=Settings" : "/login"}
           className="mb-9 inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-cyan-300"
         >
-          ← Back to administrator login
-        </Link>
+          {returnToSettings ? "← Back to settings" : "← Back to sign in"}
+        </a>
 
         <div className="mb-7 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-2xl text-cyan-300">
           ◈
@@ -268,7 +272,7 @@ export default function ResetPasswordPage() {
             </div>
 
             <Link
-              href="/forgot-password"
+              href={returnToSettings ? "/forgot-password?returnTo=settings" : "/forgot-password"}
               className="flex w-full justify-center rounded-xl bg-cyan-400 px-4 py-3.5 text-sm font-semibold text-[#04111f] transition hover:bg-cyan-300"
             >
               Request another reset link

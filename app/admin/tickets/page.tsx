@@ -110,7 +110,9 @@ export default function AdminTicketsPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [ticketPhotoUrls, setTicketPhotoUrls] = useState<Record<string, string | null>>({});
+  const [ticketPhotoViewerUrl, setTicketPhotoViewerUrl] = useState<string | null>(null);
   const [currentAdminId, setCurrentAdminId] = useState("");
+  const [clientIsTyping, setClientIsTyping] = useState(false);
 
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(
     null
@@ -136,6 +138,26 @@ export default function AdminTicketsPage() {
   const selectedTicketRef = useRef<Ticket | null>(null);
   const selectedTicketDetailsRef = useRef<HTMLDivElement | null>(null);
   const loadMessagesRef = useRef<(ticket: Ticket) => Promise<void>>(async () => {});
+
+  useEffect(() => {
+    if (!ticketPhotoViewerUrl) return;
+
+    const bodyOverflow = document.body.style.overflow;
+    const htmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setTicketPhotoViewerUrl(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = htmlOverflow;
+    };
+  }, [ticketPhotoViewerUrl]);
 
   const markTicketRead = useCallback((ticketId: string) => {
     if (!currentAdminId) return;
@@ -409,16 +431,35 @@ export default function AdminTicketsPage() {
     };
   }, [messages]);
 
+  // Listen only to the selected ticket's private typing topic. The client
+  // broadcasts a boolean state only; no draft message content is sent.
   useEffect(() => {
-    if (!selectedTicketId) return;
-    const frame = window.requestAnimationFrame(() => {
-      selectedTicketDetailsRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [selectedTicketId]);
+    setClientIsTyping(false);
+    if (!selectedTicketId || !currentAdminId) return;
+
+    let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+    const channel = supabase
+      .channel(`ticket-typing:${selectedTicketId}`, { config: { private: true } })
+      .on("broadcast", { event: "typing" }, ({ payload }) => {
+        if (payload?.actor !== "client") return;
+        const isTyping = payload?.isTyping === true;
+        setClientIsTyping(isTyping);
+        if (typingTimeout) clearTimeout(typingTimeout);
+        if (isTyping) {
+          typingTimeout = setTimeout(() => {
+            setClientIsTyping(false);
+            typingTimeout = null;
+          }, 2400);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      if (typingTimeout) clearTimeout(typingTimeout);
+      setClientIsTyping(false);
+      void supabase.removeChannel(channel);
+    };
+  }, [currentAdminId, selectedTicketId]);
 
   // Keep one stable list subscription; background updates should not reset loading UI.
   useEffect(() => {
@@ -635,8 +676,8 @@ export default function AdminTicketsPage() {
     tickets.filter((ticket) => ticket.status === status).length;
 
   return (
-    <div className="space-y-7">
-      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <div className={selectedTicket ? "flex h-[calc(100dvh-108px)] min-h-[420px] flex-col lg:h-[calc(100dvh-140px)]" : "space-y-7"}>
+      <section className={`flex flex-col justify-between gap-4 sm:flex-row sm:items-end ${selectedTicket ? "hidden" : ""}`}>
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/15 bg-cyan-200/[0.05] px-3 py-1.5 text-xs text-cyan-200">
             <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
@@ -663,7 +704,7 @@ export default function AdminTicketsPage() {
         </button>
       </section>
 
-      {notice && (
+      {notice && !selectedTicket && (
         <div
           role="status"
           className="rounded-xl border border-emerald-300/20 bg-emerald-300/[0.06] px-4 py-3 text-sm text-emerald-100"
@@ -679,7 +720,7 @@ export default function AdminTicketsPage() {
         </div>
       )}
 
-      {error && (
+      {error && !selectedTicket && (
         <div
           role="alert"
           className="rounded-xl border border-rose-300/20 bg-rose-300/[0.06] px-4 py-3 text-sm leading-6 text-rose-100"
@@ -688,7 +729,7 @@ export default function AdminTicketsPage() {
         </div>
       )}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className={`grid gap-4 sm:grid-cols-2 xl:grid-cols-4 ${selectedTicket ? "hidden" : ""}`}>
         {[
           {
             label: "Total tickets",
@@ -723,8 +764,8 @@ export default function AdminTicketsPage() {
         ))}
       </section>
 
-      <section className="space-y-5">
-        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#071725]/80">
+      <section className={selectedTicket ? "flex min-h-0 flex-1 flex-col" : "space-y-5"}>
+        {!selectedTicket && <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#071725]/80">
           <div className="space-y-4 border-b border-white/[0.07] p-4 sm:p-5">
             <div>
               <h2 className="font-semibold text-white">All tickets</h2>
@@ -915,27 +956,30 @@ export default function AdminTicketsPage() {
               </>
             )}
           </div>
-        </div>
+        </div>}
 
         {selectedTicket && (
           <div
             ref={selectedTicketDetailsRef}
-            className="min-w-0 scroll-mt-24 overflow-hidden rounded-2xl border border-cyan-300/15 bg-[#071725]/90 shadow-xl shadow-black/20"
+            className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-cyan-300/15 bg-[#071725]/90 shadow-xl shadow-black/20"
           >
-              <div className="space-y-4 border-b border-white/[0.07] p-5">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-cyan-200">
-                    Ticket details
-                  </p>
-                  <h2 className="mt-2 break-words text-lg font-semibold text-white">
-                    {selectedTicket.subject}
-                  </h2>
-                  <p className="mt-2 text-sm text-slate-400">
-                    {selectedTicket.clientName}
-                  </p>
+              {error && <p role="alert" className="shrink-0 border-b border-rose-300/15 bg-rose-300/[0.06] px-4 py-3 text-sm text-rose-100">{error}</p>}
+              {notice && <p role="status" className="shrink-0 border-b border-emerald-300/15 bg-emerald-300/[0.05] px-4 py-3 text-sm text-emerald-100">{notice}</p>}
+
+              <div className="shrink-0 border-b border-white/[0.07] p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200">Ticket conversation</p>
+                    <h2 className="mt-1 truncate text-base font-semibold text-white sm:text-lg">{selectedTicket.subject}</h2>
+                    <p className="mt-1 truncate text-xs text-slate-400">{selectedTicket.clientName}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button type="button" onClick={() => void loadMessages(selectedTicket)} className="rounded-lg px-2.5 py-2 text-xs font-medium text-cyan-200 transition hover:bg-cyan-200/[0.07] hover:text-cyan-100">Refresh</button>
+                    <button type="button" onClick={() => { setSelectedTicketId(null); selectedTicketRef.current = null; setMessages([]); setReply(""); setError(""); setNotice(""); }} aria-label="Close ticket conversation" className="grid size-9 place-items-center rounded-xl border border-white/10 text-lg text-slate-300 transition hover:border-cyan-200/25 hover:bg-white/[.04]">×</button>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span
                     className={`rounded-full border px-2.5 py-1 text-xs ${
                       statusStyles[selectedTicket.status]
@@ -955,73 +999,33 @@ export default function AdminTicketsPage() {
                   <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-slate-400">
                     {selectedTicket.category}
                   </span>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-xs text-slate-400">
-                    Update status
+                  <label className="ml-auto flex items-center gap-2 text-xs text-slate-400">
+                    Status
+                    <select value={selectedTicket.status} disabled={updatingTicket} onChange={(event) => void updateTicketStatus(event.target.value as TicketStatus)} className="max-w-40 rounded-lg border border-white/10 bg-[#04101d] px-2.5 py-2 text-xs text-white outline-none focus:border-cyan-300/40">
+                      <option value="open">Open</option><option value="in_progress">In progress</option><option value="waiting_for_client">Waiting for client</option><option value="resolved">Resolved</option><option value="closed">Closed</option>
+                    </select>
                   </label>
-                  <select
-                    value={selectedTicket.status}
-                    disabled={updatingTicket}
-                    onChange={(event) =>
-                      void updateTicketStatus(
-                        event.target.value as TicketStatus
-                      )
-                    }
-                    className={inputClass}
-                  >
-                    <option value="open">Open</option>
-                    <option value="in_progress">In progress</option>
-                    <option value="waiting_for_client">
-                      Waiting for client
-                    </option>
-                    <option value="resolved">Resolved</option>
-                    <option value="closed">Closed</option>
-                  </select>
                 </div>
               </div>
 
-              <div className="border-b border-white/[0.07] p-5">
-                <h3 className="text-sm font-semibold text-white">
-                  Original request
-                </h3>
-                <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-300">
-                  {selectedTicket.description}
-                </p>
-                <p className="mt-3 text-xs text-slate-500">
-                  Submitted{" "}
-                  {new Date(selectedTicket.created_at).toLocaleString()}
-                </p>
-              </div>
+              <details className="shrink-0 border-b border-white/[0.07] bg-white/[0.015] px-4 py-2.5 sm:px-5">
+                <summary className="cursor-pointer text-xs font-medium text-slate-300">View original request</summary>
+                <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-300">{selectedTicket.description}</p>
+                <p className="mt-2 text-[10px] text-slate-500">Submitted {new Date(selectedTicket.created_at).toLocaleString()}</p>
+              </details>
 
-              <section className="m-5 rounded-xl border border-cyan-300/15 bg-[#071725]/70 p-4 sm:p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-white">Ticket conversation</h3>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {selectedTicket.subject}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void loadMessages(selectedTicket)}
-                    className="text-xs text-cyan-200 hover:text-cyan-100"
-                  >
-                    Refresh conversation
-                  </button>
-                </div>
+              <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
 
                 {loadingMessages ? (
-                  <p className="py-6 text-sm text-slate-400">
+                  <p className="flex-1 px-4 py-6 text-sm text-slate-400 sm:px-6">
                     Loading conversation...
                   </p>
                 ) : messages.length === 0 ? (
-                  <p className="py-6 text-sm text-slate-400">
+                  <p className="flex-1 px-4 py-6 text-sm text-slate-400 sm:px-6">
                     No replies yet. You can send a message to the client below.
                   </p>
                 ) : (
-                  <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto scrollbar-hide">
+                  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4 scrollbar-hide sm:px-6">
                     {messages.map((message) => {
                       const isAdminMessage = message.sender_id === currentAdminId;
                       const content = parseTicketMessage(message.message);
@@ -1071,12 +1075,11 @@ export default function AdminTicketsPage() {
                                   This photo is unavailable.
                                 </p>
                               ) : photoUrl ? (
-                                <a
-                                  href={photoUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="mt-2 block overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-                                  aria-label="Open attached photo in a new tab"
+                                <button
+                                  type="button"
+                                  onClick={() => setTicketPhotoViewerUrl(photoUrl)}
+                                  className="mt-2 block overflow-hidden rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                                  aria-label="View attached photo in chat"
                                 >
                                   <img
                                     src={photoUrl}
@@ -1084,7 +1087,7 @@ export default function AdminTicketsPage() {
                                     loading="lazy"
                                     className="max-h-72 w-auto max-w-full rounded-xl object-contain"
                                   />
-                                </a>
+                                </button>
                               ) : content.photoPath in ticketPhotoUrls ? (
                                 <p className="mt-2 text-xs text-slate-400">
                                   This photo is unavailable.
@@ -1107,31 +1110,80 @@ export default function AdminTicketsPage() {
                   </div>
                 )}
 
-                <form onSubmit={sendReply} className="mt-5 space-y-3 border-t border-white/[0.07] pt-5">
-                  <label className="block text-sm font-medium text-white">
-                    Reply to client
-                  </label>
-                  <textarea
-                    value={reply}
-                    onChange={(event) => setReply(event.target.value)}
-                    rows={4}
-                    maxLength={10000}
-                    required
-                    placeholder="Write your message..."
-                    className={`${inputClass} resize-y leading-6`}
-                  />
-                  <button
-                    type="submit"
-                    disabled={sendingReply || !reply.trim()}
-                    className="w-full rounded-xl bg-gradient-to-r from-cyan-300 to-teal-300 px-4 py-3 text-sm font-semibold text-[#06111d] transition hover:from-cyan-200 hover:to-teal-200 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {sendingReply ? "Sending..." : "Send reply"}
-                  </button>
+                {clientIsTyping && (
+                  <div className="shrink-0 px-4 pb-2 sm:px-6" role="status" aria-live="polite" aria-label="Client is typing">
+                    <span className="rounded-2xl rounded-bl-md border border-white/[0.08] bg-[#142536] px-3.5 py-2.5 text-xs font-medium text-slate-300">
+                      <span className="mr-2">Client is typing</span>
+                      <span className="inline-flex items-center gap-1 align-middle" aria-hidden="true">
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-cyan-200 [animation-delay:-0.3s]" />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-cyan-200 [animation-delay:-0.15s]" />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-cyan-200" />
+                      </span>
+                    </span>
+                  </div>
+                )}
+
+                <form onSubmit={sendReply} className="shrink-0 border-t border-white/[0.07] bg-gradient-to-b from-[#0a1b2b] to-[#071522] p-4 sm:px-6 sm:py-5">
+                  <label htmlFor="admin-ticket-reply" className="sr-only">Write a message to the client</label>
+                  <div className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-white/[0.11] bg-[#17212b] px-3 shadow-inner shadow-black/20 transition focus-within:border-cyan-200/40 focus-within:ring-2 focus-within:ring-cyan-300/10">
+                    <textarea
+                      id="admin-ticket-reply"
+                      value={reply}
+                      onChange={(event) => setReply(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                          event.preventDefault();
+                          if (reply.trim()) event.currentTarget.form?.requestSubmit();
+                        }
+                      }}
+                      rows={1}
+                      maxLength={10000}
+                      placeholder="Write a message..."
+                      className="max-h-28 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-1 py-2.5 text-sm leading-5 text-white outline-none placeholder:text-slate-400"
+                    />
+                    {reply.trim() && (
+                      <button type="submit" disabled={sendingReply} aria-label={sendingReply ? "Sending message" : "Send message"} title="Send message" className="grid size-10 shrink-0 place-items-center rounded-full bg-emerald-400 text-[#062017] shadow-md shadow-emerald-950/25 transition hover:bg-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-100/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#17212b] disabled:cursor-not-allowed disabled:opacity-60">
+                        {sendingReply ? <span className="text-xs font-bold">…</span> : (
+                          <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className="size-5"><path d="M3.4 20.7 21 12 3.4 3.3l.1 6.8 12 1.9-12 1.9-.1 6.8Z" /></svg>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </form>
               </section>
           </div>
         )}
       </section>
+      {ticketPhotoViewerUrl && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setTicketPhotoViewerUrl(null);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Attached ticket photo"
+            className="relative flex max-h-[92dvh] w-full max-w-5xl items-center justify-center rounded-2xl border border-white/10 bg-[#071725] p-3 shadow-[0_30px_100px_rgba(0,0,0,.65)] sm:p-5"
+          >
+            <button
+              type="button"
+              onClick={() => setTicketPhotoViewerUrl(null)}
+              aria-label="Close photo viewer"
+              className="absolute right-3 top-3 z-10 grid size-10 place-items-center rounded-xl border border-white/15 bg-[#07111f]/90 text-xl text-white hover:bg-white/10"
+            >
+              ×
+            </button>
+            <img
+              src={ticketPhotoViewerUrl}
+              alt="Attached photo from the support conversation"
+              className="max-h-[84dvh] max-w-full rounded-xl object-contain"
+            />
+          </section>
+        </div>
+      )}
     </div>
   );
 }

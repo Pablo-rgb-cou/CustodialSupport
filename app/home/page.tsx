@@ -13,19 +13,43 @@ const services = [
   },
   {
     number: "02",
-    icon: "↗",
+    icon: "arrow",
     title: "Transaction support",
     description:
       "Find guidance on transaction status, confirmations, and troubleshooting.",
   },
   {
     number: "03",
-    icon: "✳",
+    icon: "chat",
     title: "Customer care",
     description:
       "Get help finding answers and navigating your support options.",
   },
 ];
+
+function ArrowUpRightIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 0 0 1.06 0l7.22-7.22v5.69a.75.75 0 0 0 1.5 0v-7.5a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0 0 1.5h5.69l-7.22 7.22a.75.75 0 0 0 0 1.06Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function QuestionMarkIcon() {
+  return (
+    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+      <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm11.378-3.917c-.89-.777-2.366-.777-3.255 0a.75.75 0 0 1-.988-1.129c1.454-1.272 3.776-1.272 5.23 0 1.513 1.324 1.513 3.518 0 4.842a3.75 3.75 0 0 1-.837.552c-.676.328-1.028.774-1.028 1.152v.75a.75.75 0 0 1-1.5 0v-.75c0-1.279 1.06-2.107 1.875-2.502.182-.088.351-.199.503-.331.83-.727.83-1.857 0-2.584ZM12 18a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function ChatBubbleIcon() {
+  return (
+    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+      <path fillRule="evenodd" d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 0 1-.814 1.686.75.75 0 0 0 .44 1.223ZM8.25 10.875a1.125 1.125 0 1 0 0 2.25 1.125 1.125 0 0 0 0-2.25ZM10.875 12a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Zm4.875-1.125a1.125 1.125 0 1 0 0 2.25 1.125 1.125 0 0 0 0-2.25Z" clipRule="evenodd" />
+    </svg>
+  );
+}
 
 type DemoTestimonial = {
   id: number;
@@ -75,8 +99,12 @@ const demoTestimonials: Omit<DemoTestimonial, "id">[] = [
 ];
 
 function CustomerFeedbackCard() {
-  const [testimonials, setTestimonials] = useState<DemoTestimonial[]>([]);
-  const [counter, setCounter] = useState(1);
+  const [testimonials, setTestimonials] = useState<DemoTestimonial[]>(() =>
+    [1, 2, 3].map((id) => ({
+      ...demoTestimonials[(id - 1) % demoTestimonials.length],
+      id,
+    }))
+  );
   const nextId = useRef(4);
 
   useEffect(() => {
@@ -85,26 +113,22 @@ function CustomerFeedbackCard() {
       id,
     });
 
-    setTestimonials([1, 2, 3].map(makeTestimonial));
-    nextId.current = 4;
-
     const testimonialTimer = window.setInterval(() => {
       const newTestimonial = makeTestimonial(nextId.current++);
       setTestimonials((current) => [newTestimonial, ...current].slice(0, 3));
-      setCounter((current) => current + 1);
-    }, 10000);
+    }, 7000);
 
     return () => window.clearInterval(testimonialTimer);
   }, []);
 
   return (
     <section className="min-w-0 overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#0c2238] via-[#081a2c] to-[#061321] shadow-[0_16px_44px_rgba(0,0,0,0.20)]">
-      <div className="flex items-start justify-between gap-4 border-b border-white/[0.07] p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-4 border-b border-white/[0.07] p-4 sm:p-5">
         <div>
           <h3 className="font-semibold text-white">Customer feedback</h3>
         </div>
         <span
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-200 shadow-[0_0_20px_rgba(34,211,238,0.08)]"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-200 shadow-[0_0_20px_rgba(34,211,238,0.08)]"
           aria-hidden="true"
         >
           <svg
@@ -125,12 +149,12 @@ function CustomerFeedbackCard() {
 
       <div
         aria-live="polite"
-        className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3"
+        className="grid grid-cols-1 auto-rows-[220px] gap-3 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3 [overflow-anchor:none]"
       >
         {testimonials.map((testimonial, index) => (
           <article
             key={testimonial.id}
-            className={`relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-br from-[#102a46] via-[#0a1c31] to-[#071321] p-4 shadow-[0_14px_36px_rgba(0,0,0,0.2)] transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/20 ${
+            className={`relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-br from-[#102a46] via-[#0a1c31] to-[#071321] p-4 shadow-[0_14px_36px_rgba(0,0,0,0.2)] transition duration-300 hover:border-cyan-300/20 ${
               index === 0 ? "animate-[testimonial-in_450ms_ease-out]" : ""
             }`}
           >
@@ -152,7 +176,7 @@ function CustomerFeedbackCard() {
             </div>
 
             <div
-              className="mt-4 text-sm tracking-[0.12em] text-amber-300"
+              className="mt-3 text-sm tracking-[0.12em] text-amber-300"
               aria-label={`${testimonial.rating} out of 5 sample stars`}
             >
               {"★".repeat(testimonial.rating)}
@@ -161,22 +185,17 @@ function CustomerFeedbackCard() {
               </span>
             </div>
 
-            <blockquote className="mt-3 flex-1 text-sm leading-6 text-slate-300">
+            <blockquote className="mt-2 min-h-0 overflow-hidden text-sm leading-6 text-slate-300 line-clamp-4">
               “{testimonial.message}”
             </blockquote>
           </article>
         ))}
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-white/[0.07] px-5 py-4 sm:px-6">
-        <span className="ml-auto shrink-0 text-xs text-cyan-200">
-          {counter} new reviews
-        </span>
-      </div>
       <style jsx>{`
         @keyframes testimonial-in {
-          from { opacity: 0; transform: translateY(-12px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}</style>
     </section>
@@ -444,7 +463,7 @@ export default function Home() {
 
       {/* Navigation */}
 
-      <header className={`relative border-b border-white/[0.08] bg-[#070b14]/75 backdrop-blur-xl ${menuOpen ? "z-[60]" : "z-20"}`}>
+      <header className={`fixed inset-x-0 top-0 border-b border-white/[0.08] bg-[#070b14]/95 backdrop-blur-xl ${menuOpen ? "z-[60]" : "z-40"}`}>
         <nav className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 sm:py-4 lg:px-10 lg:py-5">
 
 
@@ -509,7 +528,7 @@ export default function Home() {
             className="hidden min-h-10 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-cyan-200/20 bg-cyan-300 px-2.5 py-2 text-[11px] font-semibold text-slate-950 transition-all duration-300 hover:-translate-y-0.5 hover:bg-cyan-200 hover:shadow-lg hover:shadow-cyan-300/20 active:translate-y-0 md:inline-flex sm:min-h-11 sm:px-5 sm:py-3 sm:text-sm"
           >
             Get Support
-            <span aria-hidden="true">↗</span>
+            <ArrowUpRightIcon />
           </a>
 
 
@@ -558,6 +577,9 @@ export default function Home() {
         
       </header>
 
+      {/* Keep the first page section below the fixed navigation. */}
+      <div aria-hidden="true" className="h-[61px] sm:h-[72px] lg:h-[80px]" />
+
       {/* Keep the mobile menu attached to the viewport while the page is locked. */}
       {menuOpen && (
         <>
@@ -577,21 +599,21 @@ export default function Home() {
               onClick={() => setMenuOpen(false)}
               className="flex min-h-12 items-center justify-between rounded-xl px-4 py-3.5 text-sm text-slate-300 transition hover:bg-cyan-300/10 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-300"
             >
-              Services <span aria-hidden="true">↗</span>
+              Services <ArrowUpRightIcon />
             </Link>
             <Link
               href="/about"
               onClick={() => setMenuOpen(false)}
               className="flex min-h-12 items-center justify-between rounded-xl px-4 py-3.5 text-sm text-slate-300 transition hover:bg-cyan-300/10 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-300"
             >
-              About <span aria-hidden="true">↗</span>
+              About <ArrowUpRightIcon />
             </Link>
             <Link
               href="/contact"
               onClick={() => setMenuOpen(false)}
               className="flex min-h-12 items-center justify-between rounded-xl px-4 py-3.5 text-sm text-slate-300 transition hover:bg-cyan-300/10 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-300"
             >
-              Contact <span aria-hidden="true">↗</span>
+              Contact <ArrowUpRightIcon />
             </Link>
 
             <div className="mt-2 grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
@@ -669,8 +691,8 @@ export default function Home() {
             >
               <span>Contact Support</span>
 
-              <span className="shrink-0 transition-transform duration-200 group-hover:translate-x-1">
-                →
+                <span className="shrink-0 transition-transform duration-200 group-hover:translate-x-1">
+                <ArrowUpRightIcon />
               </span>
             </Link>
 
@@ -768,12 +790,8 @@ export default function Home() {
 
                   <div className="flex items-center justify-between gap-3">
 
-                    <span className="text-xs font-medium tracking-wide text-slate-300 sm:text-sm">
-                      HOW CAN WE HELP?
-                    </span>
-
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.08] text-lg text-cyan-200">
-                      ✳
+                      <QuestionMarkIcon />
                     </span>
 
                   </div>
@@ -839,7 +857,7 @@ export default function Home() {
                   >
 
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.08] text-xl text-cyan-200 transition-colors duration-300 group-hover:bg-cyan-300/[0.16]">
-                      ↗
+                      <ArrowUpRightIcon className="h-5 w-5" />
                     </span>
 
                     <span className="min-w-0 flex-1">
@@ -967,13 +985,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Customer feedback sits between the illustration and support categories. */}
-      <section className="px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
-        <div className="mx-auto max-w-7xl">
-          <CustomerFeedbackCard />
-        </div>
-      </section>
-
       {/* Services */}
 
       <section
@@ -1037,8 +1048,8 @@ export default function Home() {
                 {/* Top row */}
                 <div className="flex items-center justify-between gap-4">
 
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.07] text-2xl text-cyan-200 transition-all duration-300 group-hover:border-cyan-300/30 group-hover:bg-cyan-300/[0.13] group-hover:text-white">
-                    {service.icon}
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.07] text-2xl text-cyan-200 transition-all duration-300 group-hover:border-cyan-300/30 group-hover:bg-cyan-300/[0.13] group-hover:text-white">
+                    {service.icon === "chat" ? <ChatBubbleIcon /> : service.icon === "arrow" ? <ArrowUpRightIcon className="h-6 w-6" /> : service.icon}
                   </span>
 
                   <span className="font-mono text-xs tracking-[0.15em] text-slate-500 transition-colors duration-300 group-hover:text-cyan-200">
@@ -1074,7 +1085,7 @@ export default function Home() {
                     aria-hidden="true"
                     className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] text-sm text-slate-400 transition-all duration-300 group-hover:border-cyan-300/25 group-hover:bg-cyan-300/[0.08] group-hover:text-cyan-200"
                   >
-                    ↗
+                    <ArrowUpRightIcon />
                   </span>
 
                 </div>
@@ -1120,7 +1131,7 @@ export default function Home() {
             >
               Contact Support
 
-              <span aria-hidden="true">→</span>
+              <ArrowUpRightIcon />
             </a>
 
           </div>
@@ -1128,6 +1139,13 @@ export default function Home() {
         </div>
       </section>
 
+
+      {/* Customer feedback appears before the closing support section. */}
+      <section className="px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
+        <div className="mx-auto max-w-7xl">
+          <CustomerFeedbackCard />
+        </div>
+      </section>
 
       {/* Support Overview / Contact Card */}
       <section
@@ -1223,22 +1241,11 @@ export default function Home() {
                 >
                   Contact Support
 
-                  <span
-                    aria-hidden="true"
-                    className="inline-block transition-transform duration-200 group-hover/button:translate-x-1 group-hover/button:-translate-y-0.5"
-                  >
-                    ↗
+                  <span className="inline-block transition-transform duration-200 group-hover/button:translate-x-1 group-hover/button:-translate-y-0.5">
+                    <ArrowUpRightIcon />
                   </span>
                 </a>
               </div>
-
-              {/* Support email */}
-              <a
-                href="mailto:Support@custodial.com"
-                className="mt-4 inline-flex max-w-full break-all text-sm text-slate-400 transition-colors duration-200 hover:text-cyan-300"
-              >
-                Support@custodial.com
-              </a>
             </div>
           </div>
 

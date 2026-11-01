@@ -67,7 +67,7 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#07111f] px-5 py-12 text-white">
+    <main className="relative flex min-h-[100svh] items-center justify-center overflow-x-hidden overflow-y-auto bg-[#07111f] px-5 py-3 text-white sm:min-h-screen sm:overflow-hidden sm:py-12">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full bg-cyan-400/10 blur-3xl"
@@ -78,19 +78,19 @@ export default function SignupPage() {
         className="pointer-events-none absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl"
       />
 
-      <div className="relative z-10 w-full max-w-md">
+      <div className="relative z-10 my-auto w-full max-w-md">
         <Link
           href="/"
-          className="mb-8 inline-flex items-center gap-2 text-sm text-cyan-300 transition hover:text-cyan-200"
+          className="mb-3 inline-flex items-center gap-2 text-xs text-cyan-300 transition hover:text-cyan-200 sm:mb-8 sm:text-sm"
         >
           <span aria-hidden="true">←</span>
           Back to home
         </Link>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-7 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-9">
-          <div className="mb-8">
-            <Link href="/" className="mb-7 inline-flex items-center gap-2">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400 text-lg font-black text-[#07111f]">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-9">
+          <div className="mb-4 sm:mb-8">
+            <Link href="/" className="mb-3 inline-flex items-center gap-2 sm:mb-7">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400 text-lg font-black text-[#07111f] sm:h-10 sm:w-10">
                 C
               </span>
 
@@ -99,24 +99,24 @@ export default function SignupPage() {
               </span>
             </Link>
 
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300 sm:mb-3 sm:text-sm">
               Get started
             </p>
 
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            <h1 className="text-2xl font-bold leading-tight tracking-tight sm:text-4xl">
               Create your account
             </h1>
 
-            <p className="mt-3 text-sm leading-6 text-slate-300">
+            <p className="mt-1.5 text-xs leading-5 text-slate-300 sm:mt-3 sm:text-sm sm:leading-6">
               Register to access your account and manage your trade conversations.
             </p>
           </div>
 
-          <form onSubmit={handleSignup} className="space-y-5">
+          <form onSubmit={handleSignup} className="space-y-2.5 sm:space-y-5">
             <div>
               <label
                 htmlFor="fullName"
-                className="mb-2 block text-sm font-medium text-slate-200"
+                className="mb-1 block text-xs font-medium text-slate-200 sm:mb-2 sm:text-sm"
               >
                 Full name
               </label>
@@ -131,14 +131,14 @@ export default function SignupPage() {
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
                 placeholder="Enter your full name"
-                className="w-full rounded-lg border border-white/15 bg-[#0b1728] px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                className="w-full rounded-lg border border-white/15 bg-[#0b1728] px-4 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 sm:py-3 sm:text-base"
               />
             </div>
 
             <div>
               <label
                 htmlFor="email"
-                className="mb-2 block text-sm font-medium text-slate-200"
+                className="mb-1 block text-xs font-medium text-slate-200 sm:mb-2 sm:text-sm"
               >
                 Email address
               </label>
@@ -152,14 +152,14 @@ export default function SignupPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
-                className="w-full rounded-lg border border-white/15 bg-[#0b1728] px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                className="w-full rounded-lg border border-white/15 bg-[#0b1728] px-4 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 sm:py-3 sm:text-base"
               />
             </div>
 
             <div>
               <label
                 htmlFor="password"
-                className="mb-2 block text-sm font-medium text-slate-200"
+                className="mb-1 block text-xs font-medium text-slate-200 sm:mb-2 sm:text-sm"
               >
                 Password
               </label>
@@ -175,7 +175,7 @@ export default function SignupPage() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="At least 8 characters"
-                  className="w-full rounded-lg border border-white/15 bg-[#0b1728] px-4 py-3 pr-20 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                  className="w-full rounded-lg border border-white/15 bg-[#0b1728] px-4 py-2.5 pr-20 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 sm:py-3 sm:text-base"
                 />
 
                 <button
@@ -188,8 +188,8 @@ export default function SignupPage() {
                 </button>
               </div>
 
-              <p className="mt-2 text-xs text-slate-400">
-                Use at least 8 characters and choose a password you haven't used elsewhere.
+              <p className="mt-1 text-[10px] leading-3.5 text-slate-400 sm:mt-2 sm:text-xs sm:leading-normal">
+                Use at least 8 characters and choose a password you haven&apos;t used elsewhere.
               </p>
             </div>
 
@@ -215,13 +215,13 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-cyan-400 px-4 py-3.5 font-semibold text-[#07111f] transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-lg bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-[#07111f] transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60 sm:py-3.5 sm:text-base"
             >
               {loading ? "Creating account..." : "Create account"}
             </button>
           </form>
 
-          <p className="mt-7 text-center text-sm text-slate-300">
+          <p className="mt-4 text-center text-xs text-slate-300 sm:mt-7 sm:text-sm">
             Already have an account?{" "}
             <Link
               href="/login"
@@ -232,7 +232,7 @@ export default function SignupPage() {
           </p>
         </div>
 
-        <p className="mt-6 text-center text-xs leading-5 text-slate-500">
+        <p className="mt-3 text-center text-[10px] leading-4 text-slate-500 sm:mt-6 sm:text-xs sm:leading-5">
           Keep your password private. Never share your password or email verification link with anyone.
         </p>
       </div>

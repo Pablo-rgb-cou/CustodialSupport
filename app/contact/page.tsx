@@ -20,7 +20,7 @@ export default function ContactPage() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#07111f] text-slate-100">
-      <header className="border-b border-white/10 bg-[#07111f]/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#07111f]/95 backdrop-blur-xl">
         <nav aria-label="Main navigation" className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8 lg:px-10">
           <Link href="/" className="text-lg font-semibold tracking-tight text-white sm:text-xl">
             Custodial<span className="text-cyan-300">Support</span>

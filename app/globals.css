@@ -29,11 +29,17 @@
 }
 
 html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
   scroll-behavior: smooth;
   scroll-padding-top: 100px;
 }
 
 body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
   min-height: 100vh;
   margin: 0;
 
@@ -84,7 +90,7 @@ a {
     #070b14;
 }
 
-/* Technical grid */
+/* Background atmosphere without decorative grid lines */
 
 .hero-grid {
   position: relative;
@@ -92,33 +98,7 @@ a {
 }
 
 .hero-grid::before {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-
-  content: "";
-
-  background-image:
-    linear-gradient(
-      rgba(148, 163, 184, 0.055) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      90deg,
-      rgba(148, 163, 184, 0.055) 1px,
-      transparent 1px
-    );
-
-  background-size: 70px 70px;
-
-  mask-image: linear-gradient(
-    to bottom,
-    black 0%,
-    rgba(0, 0, 0, 0.8) 60%,
-    transparent 100%
-  );
-
-  pointer-events: none;
+  content: none;
 }
 
 /* Soft teal lighting */
@@ -248,10 +228,6 @@ button:focus-visible {
     overflow-wrap: break-word;
   }
 
-  .hero-grid::before {
-    background-size: 42px 42px;
-  }
-
   .hero-glow {
     width: 240px;
     height: 240px;
@@ -338,12 +314,10 @@ button:focus-visible {
   0%,
   100% {
     opacity: 0.35;
-    transform: scale(1);
   }
 
   50% {
     opacity: 0.55;
-    transform: scale(1.06);
   }
 }
 
