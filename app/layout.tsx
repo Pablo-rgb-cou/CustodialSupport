@@ -15,25 +15,31 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.custodialmanagement.net"),
   applicationName: "CustodialSupport",
-  title: {
-    default: "CustodialSupport | Client Support",
-    template: "%s | CustodialSupport",
-  },
+  title: "CustodialSupport",
   description:
-    "Get clear guidance, account support, and help with transaction-related questions through CustodialSupport.",
+    "Clear account and transaction support, with practical guidance when you need it.",
   openGraph: {
     type: "website",
     url: "https://www.custodialmanagement.net",
     siteName: "CustodialSupport",
-    title: "CustodialSupport | Client Support",
+    title: "CustodialSupport",
     description:
-      "Get clear guidance, account support, and help with transaction-related questions through CustodialSupport.",
+      "Clear account and transaction support, with practical guidance when you need it.",
+    images: [
+      {
+        url: "/custodial-support-preview.png",
+          width: 1729,
+          height: 910,
+        alt: "CustodialSupport — clear account and transaction support",
+      },
+    ],
   },
   twitter: {
-    card: "summary",
-    title: "CustodialSupport | Client Support",
+    card: "summary_large_image",
+    title: "CustodialSupport",
     description:
-      "Get clear guidance, account support, and help with transaction-related questions through CustodialSupport.",
+      "Clear account and transaction support, with practical guidance when you need it.",
+    images: ["/custodial-support-preview.png"],
   },
 };
 
