@@ -1,5 +1,26 @@
 @import "tailwindcss";
 
+.landing-page { font-family: Arial, Helvetica, sans-serif; }
+.landing-page section[id] { scroll-margin-top: 100px; }
+.landing-eyebrow { font-size: 10px; line-height: 1.7; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: #8fe5e8; }
+.landing-faq summary::-webkit-details-marker { display: none; }
+.landing-page a:focus-visible { outline: 2px solid #a5f3fc; outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .landing-page *, .landing-page *::before, .landing-page *::after { animation: none !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}
+
+/* Keep conversation chrome outside the transcript's scrolling area. */
+[data-client-conversation-open="true"] > div > aside,
+[data-client-conversation-open="true"] > div > div > header,
+[data-admin-conversation-open="true"] > aside,
+[data-admin-conversation-open="true"] .admin-shell-header { display: none !important; }
+[data-client-conversation-open="true"] > div > div,
+[data-admin-conversation-open="true"] .admin-shell-column { margin-left: 0 !important; }
+[data-client-conversation-open="true"],
+[data-admin-conversation-open="true"] { overscroll-behavior: none; }
+.original-ticket-request:not([open]) { padding-bottom: 0; }
+.original-ticket-request summary::-webkit-details-marker { display: none; }
+
 :root {
   --background: #070b14;
   --foreground: #f5f7fb;

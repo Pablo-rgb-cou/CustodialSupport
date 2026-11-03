@@ -17,7 +17,11 @@ export function useAdminPageScrollLock(locked: boolean) {
     if (pageScrollLocks === 0) {
       const html = document.documentElement;
       const body = document.body;
+      const scrollY = window.scrollY;
       const previous = {
+        bodyPosition: body.style.position,
+        bodyTop: body.style.top,
+        bodyWidth: body.style.width,
         htmlOverflow: html.style.overflow,
         htmlOverscroll: html.style.overscrollBehavior,
         bodyOverflow: body.style.overflow,
@@ -26,12 +30,19 @@ export function useAdminPageScrollLock(locked: boolean) {
       html.style.overflow = "hidden";
       html.style.overscrollBehavior = "none";
       body.style.overflow = "hidden";
+      body.style.position = "fixed";
+      body.style.top = `-${scrollY}px`;
+      body.style.width = "100%";
       body.style.overscrollBehavior = "none";
       restorePageScroll = () => {
         html.style.overflow = previous.htmlOverflow;
         html.style.overscrollBehavior = previous.htmlOverscroll;
         body.style.overflow = previous.bodyOverflow;
         body.style.overscrollBehavior = previous.bodyOverscroll;
+        body.style.position = previous.bodyPosition;
+        body.style.top = previous.bodyTop;
+        body.style.width = previous.bodyWidth;
+        window.scrollTo({ top: scrollY, behavior: "instant" });
       };
     }
     pageScrollLocks += 1;

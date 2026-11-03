@@ -522,6 +522,7 @@ const {
 const [ticketReply, setTicketReply] = useState("");
 const updateClientTyping = useClientTicketTyping(currentUserId, selectedTicketId);
 const clientConversationScrollRef = useRef<HTMLDivElement | null>(null);
+const clientChatShellRef = useRef<HTMLElement | null>(null);
 const clientFollowMessagesRef = useRef(true);
 const [ticketReplyPhoto, setTicketReplyPhoto] = useState<File | null>(null);
 const ticketPhotoPaths = ticketMessages.flatMap((message) => {
@@ -1234,12 +1235,38 @@ useEffect(() => {
 
   const bodyOverflow = document.body.style.overflow;
   const htmlOverflow = document.documentElement.style.overflow;
+  const scrollY = window.scrollY;
+  const bodyPosition = document.body.style.position;
+  const bodyTop = document.body.style.top;
+  const bodyWidth = document.body.style.width;
+  const shell = clientChatShellRef.current;
+  const viewport = window.visualViewport;
+  const fitViewport = () => {
+    shell?.style.setProperty("--client-chat-height", `${viewport?.height ?? window.innerHeight}px`);
+    shell?.style.setProperty("--client-chat-top", `${viewport?.offsetTop ?? 0}px`);
+    const panel = clientConversationScrollRef.current;
+    if (panel && clientFollowMessagesRef.current) panel.scrollTop = panel.scrollHeight;
+  };
+  fitViewport();
+  window.addEventListener("resize", fitViewport);
+  viewport?.addEventListener("resize", fitViewport);
+  viewport?.addEventListener("scroll", fitViewport, { passive: true });
   document.body.style.overflow = "hidden";
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = "100%";
   document.documentElement.style.overflow = "hidden";
 
   return () => {
+    window.removeEventListener("resize", fitViewport);
+    viewport?.removeEventListener("resize", fitViewport);
+    viewport?.removeEventListener("scroll", fitViewport);
     document.body.style.overflow = bodyOverflow;
+    document.body.style.position = bodyPosition;
+    document.body.style.top = bodyTop;
+    document.body.style.width = bodyWidth;
     document.documentElement.style.overflow = htmlOverflow;
+    window.scrollTo({ top: scrollY, behavior: "instant" });
   };
 }, [isTicketChatOpen]);
 
@@ -1285,7 +1312,7 @@ Loading your dashboard...
 }
 
 return (
-<main className={`${isTicketChatOpen ? "h-[100dvh] min-h-0 overflow-hidden" : "min-h-screen"} bg-[#020a14] text-white selection:bg-cyan-300/25 selection:text-cyan-50`}>
+<main ref={clientChatShellRef} data-client-conversation-open={isTicketChatOpen ? "true" : undefined} style={isTicketChatOpen ? { top: "var(--client-chat-top, 0px)", height: "var(--client-chat-height, 100dvh)" } : undefined} className={`${isTicketChatOpen ? "fixed inset-x-0 min-h-0 overflow-hidden" : "min-h-screen"} bg-[#020a14] text-white selection:bg-cyan-300/25 selection:text-cyan-50`}>
 <div className={`relative isolate flex ${isTicketChatOpen ? "h-full min-h-0 overflow-hidden" : "min-h-screen overflow-x-clip"} bg-[radial-gradient(ellipse_at_72%_0%,rgba(14,165,233,0.14),transparent_34%),radial-gradient(ellipse_at_4%_56%,rgba(8,145,178,0.09),transparent_30%),linear-gradient(135deg,#020a14_0%,#07182a_48%,#020a14_100%)]`}>
 {/* Sidebar */}
 <aside className="fixed inset-y-0 left-0 z-30 hidden h-dvh w-[270px] shrink-0 flex-col border-r border-cyan-200/[0.07] bg-[#04101e]/95 shadow-[12px_0_40px_rgba(0,0,0,0.12)] lg:flex">
@@ -1941,6 +1968,7 @@ Custodial<span className="text-cyan-300">Support</span>
                   <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-3 sm:px-6">
                     <div>
                       <h3 className="font-semibold text-white">Ticket conversation</h3>
+                      <span className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium ${tickets.find((ticket) => ticket.id === selectedTicketId)?.status === "Waiting for client" ? "border-amber-300/20 bg-amber-300/10 text-amber-200" : tickets.find((ticket) => ticket.id === selectedTicketId)?.status === "In progress" ? "border-blue-300/20 bg-blue-300/10 text-blue-200" : "border-teal-300/20 bg-teal-300/10 text-teal-200"}`}><span aria-hidden="true" className="size-1.5 rounded-full bg-current" />{tickets.find((ticket) => ticket.id === selectedTicketId)?.status}</span>
                     </div>
                     <div className="flex items-center gap-4">
                       <button

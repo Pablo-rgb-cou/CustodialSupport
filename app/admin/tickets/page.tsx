@@ -222,6 +222,8 @@ export default function AdminTicketsPage() {
     const fitViewport = () => {
       shell.style.setProperty("--admin-chat-viewport-height", `${viewport?.height ?? window.innerHeight}px`);
       shell.style.setProperty("--admin-chat-viewport-top", `${viewport?.offsetTop ?? 0}px`);
+      const panel = messagesPanelRef.current;
+      if (panel && followMessagesRef.current) panel.scrollTop = panel.scrollHeight;
     };
     fitViewport();
     selectedTicketDetailsRef.current?.focus({ preventScroll: true });
@@ -1062,8 +1064,8 @@ export default function AdminTicketsPage() {
                   tabIndex={0}
                   className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-cyan-200/30"
                 >
-              <details className="border-b border-white/[0.07] bg-white/[0.015] px-4 py-2.5 sm:px-5">
-                <summary className="cursor-pointer text-xs font-medium text-slate-400">View original request <span className="ml-2 font-mono text-[10px] text-slate-600">#{selectedTicket.id.slice(0, 8)}</span></summary>
+              <details className="original-ticket-request group mx-4 my-3 overflow-hidden rounded-2xl border border-cyan-200/10 bg-gradient-to-br from-[#10283a] to-[#081b2a] px-4 pb-3 shadow-sm sm:mx-5">
+                <summary className="flex cursor-pointer list-none items-center gap-3 py-3 text-xs font-semibold text-cyan-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/50"><span className="grid size-8 shrink-0 place-items-center rounded-lg border border-cyan-200/15 bg-cyan-200/[0.06] text-cyan-200"><TicketConversationIcon /></span><span className="flex-1">Original request<span className="mt-0.5 block text-[10px] font-normal text-slate-400">View the submitted ticket details</span></span><span aria-hidden="true" className="text-lg text-cyan-200 transition-transform group-open:rotate-180">⌄</span></summary>
                 <h3 className="mt-3 break-words text-sm font-semibold text-slate-100">{selectedTicket.subject}</h3>
                 <p className="mt-1 text-[10px] uppercase tracking-wide text-sky-200/70">{selectedTicket.category}</p>
                 <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-300">{selectedTicket.description}</p>

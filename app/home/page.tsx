@@ -2,28 +2,29 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { LandingSupportFinder, LandingSupportJourney, LandingSupportPreparation, LandingSupportFAQ } from "@/app/components/LandingSupportSections";
 
 const services = [
   {
     number: "01",
     icon: "◎",
-    title: "Account assistance",
+    title: "Wallet & account guidance",
     description:
-      "Get guidance with account access, profile settings, and general account questions.",
+      "Find your next step with wallet activity, account access, and profile questions. Keep the details together in your support account.",
   },
   {
     number: "02",
     icon: "arrow",
     title: "Transaction support",
     description:
-      "Find guidance on transaction status, confirmations, and troubleshooting.",
+      "Ask about a transfer, share the relevant network and transaction reference, and follow the conversation as new information becomes available.",
   },
   {
     number: "03",
     icon: "chat",
-    title: "Customer care",
+    title: "A conversation that continues",
     description:
-      "Get help finding answers and navigating your support options.",
+      "Return to the same ticket, attach a helpful photo, and keep track of replies and account notices from your dashboard.",
   },
 ];
 
@@ -126,6 +127,7 @@ function CustomerFeedbackCard() {
       <div className="flex items-start justify-between gap-4 border-b border-white/[0.07] p-4 sm:p-5">
         <div>
           <h3 className="font-semibold text-white">Customer feedback</h3>
+          <p className="mt-1 text-xs text-slate-500">Illustrative support experiences</p>
         </div>
         <span
           className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-200 shadow-[0_0_20px_rgba(34,211,238,0.08)]"
@@ -448,7 +450,7 @@ export default function Home() {
   }, [menuOpen]);
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#070B14] text-white">
+    <main className="landing-page min-h-screen overflow-hidden bg-[#070B14] text-white">
       {/* Background atmosphere */}
       <div className="site-background pointer-events-none" aria-hidden="true">
         <div
@@ -484,6 +486,7 @@ export default function Home() {
 
           {/* Desktop navigation links */}
           <div className="hidden items-center gap-9 text-sm text-slate-400 md:flex">
+            <a href="#how-it-works" className="transition-colors duration-200 hover:text-cyan-300">How it works</a>
             <Link
               href="/services"
               className="transition-colors duration-200 hover:text-cyan-300"
@@ -492,10 +495,10 @@ export default function Home() {
             </Link>
 
             <Link
-              href="/about"
+              href="#questions"
               className="transition-colors duration-200 hover:text-cyan-300"
             >
-              About
+              FAQs
             </Link>
 
             <a
@@ -594,6 +597,8 @@ export default function Home() {
             aria-label="Mobile navigation"
             className="fixed left-3 right-3 top-[5.5rem] z-50 max-h-[calc(100dvh-6.5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-[#0b1220]/[0.98] p-3 shadow-2xl shadow-black/40 backdrop-blur-2xl md:hidden"
           >
+            <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="flex min-h-12 items-center justify-between rounded-xl px-4 py-3.5 text-sm text-slate-300 hover:bg-cyan-300/10 hover:text-cyan-300">How it works <ArrowUpRightIcon /></a>
+            <a href="#questions" onClick={() => setMenuOpen(false)} className="flex min-h-12 items-center justify-between rounded-xl px-4 py-3.5 text-sm text-slate-300 hover:bg-cyan-300/10 hover:text-cyan-300">Common questions <ArrowUpRightIcon /></a>
             <Link
               href="/services"
               onClick={() => setMenuOpen(false)}
@@ -648,10 +653,10 @@ export default function Home() {
             <SupportIllustration />
           </div>
           <div className="hero-status-float absolute left-2 top-8 rounded-xl border border-cyan-300/20 bg-[#0B1A2A]/90 px-4 py-3 shadow-xl shadow-cyan-950/30 sm:left-0">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Support network</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Wallets · Transactions · Accounts</p>
             <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-cyan-200">
               <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_12px_#65F5D0]" />
-              Connected and ready
+              One place to find clarity
             </p>
           </div>
           <div className="absolute bottom-5 right-1 rounded-xl border border-white/10 bg-[#101D2D]/95 px-4 py-3 shadow-xl sm:right-0">
@@ -667,18 +672,19 @@ export default function Home() {
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-300" />
             </span>
             <span className="text-xs font-semibold tracking-[0.12em] text-emerald-200 sm:text-sm">
-              YOUR CUSTOMER SUPPORT CENTER
+              WALLET & TRANSACTION SUPPORT
             </span>
           </div>
 
           <h1 className="max-w-2xl text-[clamp(2.1rem,8.8vw,3.5rem)] font-bold leading-[1.06] tracking-[-0.055em] sm:text-6xl lg:text-[68px] xl:text-[76px]">
-            Support that puts
-            <span className="text-gradient mt-1 block">you first.</span>
+            Your next step,
+            <span className="text-gradient mt-1 block">made clearer.</span>
           </h1>
 
           <p className="mt-7 max-w-xl text-base leading-8 text-slate-400 sm:text-lg sm:leading-9">
-            A central place to find assistance, navigate account questions,
-            and get clear guidance with transaction-related concerns.
+            Wallet questions shouldn’t leave you guessing. Get guidance with
+            transaction concerns, follow your requests, and keep every support
+            conversation in one place.
           </p>
 
           {/* Hero action buttons */}
@@ -689,7 +695,7 @@ export default function Home() {
               href="/signup"
               className="hero-button-primary group inline-flex h-12 w-full min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-cyan-300 px-2 text-[12px] font-semibold text-slate-950 transition-all duration-200 hover:-translate-y-1 hover:bg-cyan-200 hover:shadow-xl hover:shadow-cyan-300/10 min-[390px]:text-sm sm:h-auto sm:w-auto sm:gap-3 sm:px-6 sm:py-4 sm:text-base"
             >
-              <span>Contact Support</span>
+              <span>Get support</span>
 
                 <span className="shrink-0 transition-transform duration-200 group-hover:translate-x-1">
                 <ArrowUpRightIcon />
@@ -698,10 +704,10 @@ export default function Home() {
 
             {/* Secondary button */}
             <a
-              href="#services"
+              href="#find-support"
               className="hero-button-secondary inline-flex h-12 w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl border border-white/10 bg-white/[0.03] px-2 text-[12px] font-semibold text-white transition-all duration-200 hover:border-cyan-300/30 hover:bg-white/[0.07] min-[390px]:text-sm sm:h-auto sm:w-auto sm:px-6 sm:py-4 sm:text-base"
             >
-              Explore Services
+              Find your next step
             </a>
 
           </div>
@@ -713,12 +719,18 @@ export default function Home() {
               <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#070B14] bg-cyan-900 text-sm text-cyan-200">+</span>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-200">Support, made simpler</p>
-              <p className="mt-1 text-xs text-slate-500">Clear guidance for your questions</p>
+              <p className="text-sm font-medium text-slate-200">A question. A ticket. A clearer picture.</p>
+              <p className="mt-1 text-xs text-slate-500">Messages, attachments, and updates in your dashboard</p>
             </div>
           </div>
         </div>
       </section>
+
+      <div className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-3 px-4 pb-10 sm:grid-cols-3 sm:px-6 lg:px-10">
+        {[["01", "Wallet questions", "Understand what you’re seeing."], ["02", "Transaction context", "Bring the right details together."], ["03", "Ongoing support", "Pick up where you left off."]].map(([number, title, text]) => <a key={number} href="#find-support" className="group flex items-center gap-4 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 transition-colors hover:border-cyan-200/25 hover:bg-cyan-200/[0.04]"><span className="font-mono text-xs text-cyan-200/50">{number}</span><span className="flex-1"><span className="block text-sm font-semibold text-slate-200">{title}</span><span className="mt-1 block text-xs text-slate-500">{text}</span></span><ArrowUpRightIcon className="size-4 text-cyan-200/60" /></a>)}
+      </div>
+
+      <LandingSupportFinder />
 
       {/* Support Overview */}
 
@@ -1140,6 +1152,10 @@ export default function Home() {
       </section>
 
 
+      <LandingSupportJourney />
+      <LandingSupportPreparation />
+      <LandingSupportFAQ />
+
       {/* Customer feedback appears before the closing support section. */}
       <section className="px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
         <div className="mx-auto max-w-7xl">
@@ -1228,18 +1244,18 @@ export default function Home() {
             {/* Right column: Description and contact */}
             <div className="min-w-0 md:max-w-lg md:justify-self-end">
               <p className="text-sm leading-7 text-slate-300 sm:text-base sm:leading-8">
-                Find helpful information, explore support categories, and get
-                direction on your next step. Clear communication and careful
-                handling of sensitive information matter.
+                Whether you have a wallet question or a transaction to follow up,
+                start with the details you have. Create a support account to keep
+                your request and conversation together, or send a general enquiry.
               </p>
 
               {/* Contact button */}
               <div className="mt-7">
                 <a
-                  href="mailto:support@custodialmanagement.net"
+                  href="/contact"
                   className="button-primary group/button inline-flex min-h-12 items-center justify-center gap-3 rounded-xl border border-cyan-200/20 px-5 py-3 text-sm font-semibold sm:px-6 sm:text-base"
                 >
-                  Contact Support
+                  Send an enquiry
 
                   <span className="inline-block transition-transform duration-200 group-hover/button:translate-x-1 group-hover/button:-translate-y-0.5">
                     <ArrowUpRightIcon />
@@ -1263,12 +1279,13 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/[0.08] px-6 py-8 lg:px-10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <a href="#home" className="font-semibold text-slate-300">
-            Custodial<span className="text-cyan-300">Support</span>
-          </a>
-          <p>© 2026 Custodial Support. All rights reserved.</p>
-          <Link href="/about" className="transition-colors hover:text-white">Support information</Link>
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-8 pb-9 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
+            <div><a href="#home" className="text-lg font-semibold text-slate-200">Custodial<span className="text-cyan-300">Support</span></a><p className="mt-3 max-w-xs text-sm leading-7 text-slate-500">Clearer guidance for wallet questions, transaction concerns, and the conversations that follow.</p></div>
+            <nav aria-label="Support resources" className="space-y-3 text-sm text-slate-400"><h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-200">Find your way</h3><a href="#find-support" className="block hover:text-cyan-200">Find support</a><a href="#how-it-works" className="block hover:text-cyan-200">How it works</a><a href="#questions" className="block hover:text-cyan-200">Common questions</a></nav>
+            <nav aria-label="Account and contact" className="space-y-3 text-sm text-slate-400"><h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-200">Stay connected</h3><Link href="/login" className="block hover:text-cyan-200">Sign in to your account</Link><Link href="/contact" className="block hover:text-cyan-200">Contact support</Link><Link href="/about" className="block hover:text-cyan-200">About CustodialSupport</Link></nav>
+          </div>
+          <div className="flex flex-col gap-3 border-t border-white/[0.07] pt-5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between"><p>© 2026 CustodialSupport. All rights reserved.</p><a href="#home" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-200">Back to top <ArrowUpRightIcon /></a></div>
         </div>
       </footer>
     </main>
