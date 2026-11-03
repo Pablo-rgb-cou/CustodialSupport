@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { recordSessionActivity } from "@/lib/session-activity";
 
 export default function AdminLoginPage() {
     const router = useRouter();
@@ -62,7 +63,8 @@ export default function AdminLoginPage() {
                 return;
             }
 
-            // Navigate only after the admin role is verified.
+            // Explicit successful sign-in starts a fresh idle session.
+            recordSessionActivity(authData.user.id);
             router.replace("/admin");
             router.refresh();
         } catch (err) {
@@ -89,7 +91,7 @@ export default function AdminLoginPage() {
                 </Link>
 
                 <div className="mb-7 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-2xl text-cyan-300">
-                    ◈
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className="size-7"><path d="M12 2.25 3.75 5.5v5.2c0 5.26 3.32 9.49 8.25 11.05 4.93-1.56 8.25-5.79 8.25-11.05V5.5L12 2.25Z"/><path d="m8 12 2.5 2.5L16 9" fill="none" stroke="#04111f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
 
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300">
@@ -174,7 +176,7 @@ export default function AdminLoginPage() {
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-3.5 text-sm font-semibold text-[#04111f] transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {loading ? "Verifying administrator..." : "Sign in to dashboard"}
-                        {!loading && <span aria-hidden="true">→</span>}
+                        {!loading && <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-4"><path fillRule="evenodd" clipRule="evenodd" d="M5.22 14.78a.75.75 0 0 0 1.06 0l7.22-7.22v5.69a.75.75 0 0 0 1.5 0v-7.5a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0 0 1.5h5.69l-7.22 7.22a.75.75 0 0 0 0 1.06Z"/></svg>}
                     </button>
                 </form>
 

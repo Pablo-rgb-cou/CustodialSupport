@@ -1,6 +1,8 @@
+import Link from "next/link";
+
 export default function AboutPage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#070B14] text-white">
+    <main className="public-details-shell relative min-h-screen overflow-hidden bg-[#070B14] text-white">
       {/* Shared background atmosphere */}
       <div className="site-background pointer-events-none absolute inset-0" aria-hidden="true">
         <div className="hero-glow" style={{ top: "-100px", left: "8%" }} />
@@ -9,22 +11,22 @@ export default function AboutPage() {
       </div>
 
       {/* Shared navigation */}
-      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#070b14]/95 backdrop-blur-xl">
+      <header className="public-details-header fixed inset-x-0 top-0 z-40 border-b border-white/[0.08] bg-[#070b14]/95 backdrop-blur-xl">
         <nav className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 sm:py-4 lg:px-10 lg:py-5">
-          <a href="/" aria-label="Custodial Support home" className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+          <Link href="/" aria-label="Custodial Support home" className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-400/10 text-lg font-bold text-cyan-300 transition-colors duration-300 hover:border-cyan-300/60 hover:bg-cyan-400/20 sm:h-10 sm:w-10 sm:text-xl">C</span>
             <span className="whitespace-nowrap text-[13px] font-semibold tracking-tight sm:text-lg">Custodial<span className="text-cyan-300">Support</span></span>
-          </a>
+          </Link>
 
           <div className="hidden items-center gap-9 text-sm text-slate-400 md:flex">
-            <a href="/services" className="transition-colors duration-200 hover:text-cyan-300">Services</a>
-            <a href="/about" aria-current="page" className="text-cyan-300 transition-colors duration-200 hover:text-cyan-200">About</a>
-            <a href="/contact" className="transition-colors duration-200 hover:text-cyan-300">Contact</a>
+            <Link href="/services" className="transition-colors duration-200 hover:text-cyan-300">Services</Link>
+            <Link href="/about" aria-current="page" className="text-cyan-300 transition-colors duration-200 hover:text-cyan-200">About</Link>
+            <Link href="/contact" className="transition-colors duration-200 hover:text-cyan-300">Contact</Link>
           </div>
 
-          <a href="/#contact" className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-cyan-200/20 bg-cyan-300 px-2.5 py-2 text-[11px] font-semibold text-slate-950 transition-all duration-300 hover:-translate-y-0.5 hover:bg-cyan-200 hover:shadow-lg hover:shadow-cyan-300/20 active:translate-y-0 sm:min-h-11 sm:px-5 sm:py-3 sm:text-sm">
+          <Link href="/home#contact" className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-cyan-200/20 bg-cyan-300 px-2.5 py-2 text-[11px] font-semibold text-slate-950 transition-all duration-300 hover:-translate-y-0.5 hover:bg-cyan-200 hover:shadow-lg hover:shadow-cyan-300/20 active:translate-y-0 sm:min-h-11 sm:px-5 sm:py-3 sm:text-sm">
             Get Support <span aria-hidden="true">↗</span>
-          </a>
+          </Link>
         </nav>
       </header>
 
@@ -46,12 +48,12 @@ export default function AboutPage() {
             Our focus is clear communication, straightforward guidance, and a support experience that helps people navigate their questions with greater confidence.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <a href="/signup" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-6 py-3 text-sm font-semibold text-slate-950 transition-all duration-300 hover:-translate-y-0.5 hover:bg-cyan-200 hover:shadow-lg hover:shadow-cyan-300/20">
+            <Link href="/signup" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-6 py-3 text-sm font-semibold text-slate-950 transition-all duration-300 hover:-translate-y-0.5 hover:bg-cyan-200 hover:shadow-lg hover:shadow-cyan-300/20">
               Contact Support <span aria-hidden="true">↗</span>
-            </a>
-            <a href="/#services" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-300/40 hover:bg-cyan-300/[0.07]">
+            </Link>
+            <Link href="/home#services" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-300/40 hover:bg-cyan-300/[0.07]">
               Explore Services
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -124,8 +126,8 @@ export default function AboutPage() {
             <p className="mt-4 text-sm leading-7 text-slate-300 sm:text-base">Have a question or need help finding the right information? Get in touch with the support team.</p>
           </div>
           <div className="relative mt-7 shrink-0 lg:mt-0">
-            <a href="/signup" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-6 py-3 text-sm font-semibold text-slate-950 transition-all duration-300 hover:-translate-y-0.5 hover:bg-cyan-200 hover:shadow-lg hover:shadow-cyan-300/20">Contact Support <span aria-hidden="true">↗</span></a>
-            <a href="mailto:Support@custodial.com" className="mt-3 block break-all text-sm text-slate-400 transition-colors hover:text-cyan-300">Support@custodial.com</a>
+            <Link href="/signup" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-6 py-3 text-sm font-semibold text-slate-950 transition-all duration-300 hover:-translate-y-0.5 hover:bg-cyan-200 hover:shadow-lg hover:shadow-cyan-300/20">Contact Support <span aria-hidden="true">↗</span></Link>
+            <a href="mailto:support@custodialmanagement.net" className="mt-3 block break-all text-sm text-slate-400 transition-colors hover:text-cyan-300">support@custodialmanagement.net</a>
           </div>
         </div>
       </section>
@@ -133,9 +135,9 @@ export default function AboutPage() {
       {/* Shared footer */}
       <footer className="relative z-10 border-t border-white/[0.08] px-6 py-8 lg:px-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <a href="/" className="font-semibold text-slate-300">Custodial<span className="text-cyan-300">Support</span></a>
+          <Link href="/" className="font-semibold text-slate-300">Custodial<span className="text-cyan-300">Support</span></Link>
           <p>© 2026 Custodial Support. All rights reserved.</p>
-          <a href="/about" className="transition-colors hover:text-white">Support information</a>
+          <Link href="/about" className="transition-colors hover:text-white">Support information</Link>
         </div>
       </footer>
     </main>

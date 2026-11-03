@@ -16,6 +16,14 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.custodialmanagement.net"),
   applicationName: "CustodialSupport",
   title: "CustodialSupport",
+  icons: {
+    icon: [
+      { url: "/brand/custodial-icon-v20261103-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/custodial-icon-v20261103-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico?v=20261103",
+    apple: { url: "/brand/custodial-icon-v20261103-180.png", sizes: "180x180", type: "image/png" },
+  },
   description:
     "Clear account and transaction support, with practical guidance when you need it.",
   openGraph: {
@@ -48,6 +56,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

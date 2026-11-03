@@ -35,14 +35,7 @@ function detailValue(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
 
-function ActivityGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden="true">
-      <path d="M3 12h4l2.1-6 4.2 12 2.2-6H21" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="12" cy="12" r="9.25" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
-  );
-}
+function ActivityGlyph() { return <svg viewBox="0 0 24 24" fill="currentColor" className="size-6" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path fill="none" stroke="#081a2a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 6.5V12h4"/></svg>; }
 
 function StatCard({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) {
   return (
@@ -110,7 +103,7 @@ export default function AdminActivityPage() {
     void load(true);
 
     const channel = supabase
-      .channel("admin-activity-live")
+      .channel("admin-activity-live:" + crypto.randomUUID(), { config: { postgres_changes_options: { wait: true } } })
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "activity_logs" },

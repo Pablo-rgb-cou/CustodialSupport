@@ -433,98 +433,53 @@ button:focus-visible {
   background: transparent !important;
 }
 
-/* Auth and password recovery screens stay within the device viewport. */
+/* Replace the existing auth-viewport block (and its height media queries) with
+   these rules. Regular screens fit without scrolling; a short viewport or open
+   keyboard can scroll inside the auth screen so required controls stay usable. */
 main.auth-viewport {
   position: fixed;
   inset: 0;
   z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   width: 100%;
   height: 100vh;
   height: 100dvh;
   min-height: 0 !important;
   box-sizing: border-box;
-  overflow: hidden !important;
-  overscroll-behavior: none;
-  padding-top: max(12px, env(safe-area-inset-top)) !important;
-  padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)) !important;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-
-main.auth-viewport::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+main.auth-viewport::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.auth-content { flex-shrink: 0; min-width: 0; max-height: none; margin-block: auto; }
+.auth-card { flex-shrink: 0; box-sizing: border-box; width: 100%; max-height: none; }
+main.auth-viewport > .auth-card { margin-block: auto; }
+.auth-card input:not([type="checkbox"]):not(.auth-code-input) { font-size: 16px !important; }
+.auth-card .auth-code-input { font-size: 24px; }
+@media (max-height: 740px) {
+  .auth-card { padding: 1.1rem !important; }
+  .auth-back { margin-bottom: .5rem !important; min-height: 2rem; }
+  .auth-brand { margin-bottom: 1rem !important; }
+  .auth-heading-block { margin-bottom: 1rem !important; }
+  .auth-heading { font-size: 1.65rem !important; }
+  .auth-form > :not([hidden]) ~ :not([hidden]) { margin-top: .65rem !important; }
+  .auth-footer { margin-top: .65rem !important; line-height: 1rem; }
+}
+@media (max-height: 600px) {
+  .auth-card { padding: .9rem !important; }
+  .auth-brand { margin-bottom: .75rem !important; }
+  .auth-description { line-height: 1.35rem; }
+  .auth-heading-block { margin-bottom: .75rem !important; }
 }
 
-.auth-content {
-  min-height: 0;
-  max-height: 100%;
-}
-
-.auth-card {
-  max-height: 100%;
-  box-sizing: border-box;
-}
-
-@media (max-height: 780px) {
-  main.auth-viewport {
-    padding-left: max(12px, env(safe-area-inset-left)) !important;
-    padding-right: max(12px, env(safe-area-inset-right)) !important;
-  }
-
-  .auth-card {
-    padding: 1.25rem !important;
-  }
-
-  .auth-form {
-    margin-top: 1rem !important;
-  }
-
-  .auth-form > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 0.75rem !important;
-  }
-
-  .auth-footer {
-    margin-top: 0.75rem !important;
-  }
-}
-
-@media (max-height: 680px) {
-  main.auth-viewport {
-    padding-top: max(6px, env(safe-area-inset-top)) !important;
-    padding-bottom: max(6px, env(safe-area-inset-bottom)) !important;
-  }
-
-  .auth-card {
-    padding: 0.85rem !important;
-  }
-
-  .auth-card h1 {
-    font-size: 1.5rem !important;
-    line-height: 1.15 !important;
-  }
-
-  .auth-card p {
-    line-height: 1.35 !important;
-  }
-
-  .auth-form {
-    margin-top: 0.65rem !important;
-  }
-
-  .auth-form > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 0.5rem !important;
-  }
-
-  .auth-card input,
-  .auth-card button {
-    min-height: 2.5rem;
-  }
-
-  .auth-footer {
-    margin-top: 0.5rem !important;
-    font-size: 0.65rem !important;
-    line-height: 1rem !important;
-  }
-}
+/* Public detail pages reserve their fixed header and device safe areas. */
+.public-details-shell { padding-top: calc(72px + env(safe-area-inset-top)); padding-bottom: env(safe-area-inset-bottom); }
+.public-details-header { padding-top: env(safe-area-inset-top); }
+.public-details-header nav { height: 72px; padding-top: 12px; padding-bottom: 12px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }

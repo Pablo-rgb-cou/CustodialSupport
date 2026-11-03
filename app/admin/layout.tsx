@@ -1,17 +1,21 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { useIdleSession } from "@/lib/use-idle-session";
+import { withRequestTimeout } from "@/lib/with-request-timeout";
+import { sessionHasEnded } from "@/lib/session-activity";
+import { AdminChatLayoutContext, useAdminPageScrollLock } from "./admin-chat-layout";
 
 const navItems = [
   { label: "Overview", href: "/admin", icon: "home" },
   { label: "Support tickets", href: "/admin/tickets", icon: "tickets" },
   { label: "Withdrawals", href: "/admin/withdrawals", icon: "withdrawals" },
-  { label: "Clients", href: "/admin/clients", icon: "♙" },
+  { label: "Clients", href: "/admin/clients", icon: "clients" },
   { label: "Notifications", href: "/admin/notifications", icon: "notifications" },
-  { label: "Activity log", href: "/admin/activity", icon: "◷" },
+  { label: "Activity log", href: "/admin/activity", icon: "activity" },
   { label: "Settings", href: "/admin/settings", icon: "settings" },
 ];
 
@@ -21,8 +25,8 @@ const adminNavigationIconTileColors: Record<string, string> = {
   tickets: "border-sky-300/20 bg-sky-300/[0.09] text-sky-200",
   notifications: "border-amber-300/20 bg-amber-300/[0.09] text-amber-200",
   settings: "border-violet-300/20 bg-violet-300/[0.09] text-violet-200",
-  "♙": "border-fuchsia-300/20 bg-fuchsia-300/[0.08] text-fuchsia-200",
-  "◷": "border-indigo-300/20 bg-indigo-300/[0.08] text-indigo-200",
+  clients: "border-fuchsia-300/20 bg-fuchsia-300/[0.08] text-fuchsia-200",
+  activity: "border-indigo-300/20 bg-indigo-300/[0.08] text-indigo-200",
 };
 
 function AdminNavigationIcon({ icon }: { icon: string }) {
@@ -43,7 +47,9 @@ function AdminNavigationIcon({ icon }: { icon: string }) {
   if (icon === "settings") {
     return <svg {...common}><path fillRule="evenodd" clipRule="evenodd" d="M11.828 2.25c-.916 0-1.699.663-1.85 1.567l-.091.549a.798.798 0 0 1-.517.608 7.45 7.45 0 0 0-.478.198.798.798 0 0 1-.796-.064l-.453-.324a1.875 1.875 0 0 0-2.416.2l-.243.243a1.875 1.875 0 0 0-.2 2.416l.324.453a.798.798 0 0 1 .064.796 7.448 7.448 0 0 0-.198.478.798.798 0 0 1-.608.517l-.55.092a1.875 1.875 0 0 0-1.566 1.849v.344c0 .916.663 1.699 1.567 1.85l.549.091c.281.047.508.25.608.517.06.162.127.321.198.478a.798.798 0 0 1-.064.796l-.324.453a1.875 1.875 0 0 0 .2 2.416l.243.243c.648.648 1.67.733 2.416.2l.453-.324a.798.798 0 0 1 .796-.064c.157.071.316.137.478.198.267.1.47.327.517.608l.092.55c.15.903.932 1.566 1.849 1.566h.344c.916 0 1.699-.663 1.85-1.567l.091-.549a.798.798 0 0 1 .517-.608 7.52 7.52 0 0 0 .478-.198.798.798 0 0 1 .796.064l.453.324a1.875 1.875 0 0 0 2.416-.2l.243-.243c.648-.648.733-1.67.2-2.416l-.324-.453a.798.798 0 0 1-.064-.796c.071-.157.137-.316.198-.478.1-.267.327-.47.608-.517l.55-.091a1.875 1.875 0 0 0 1.566-1.85v-.344c0-.916-.663-1.699-1.567-1.85l-.549-.091a.798.798 0 0 1-.608-.517 7.507 7.507 0 0 0-.198-.478.798.798 0 0 1 .064-.796l.324-.453a1.875 1.875 0 0 0-.2-2.416l-.243-.243a1.875 1.875 0 0 0-2.416-.2l-.453.324a.798.798 0 0 1-.796.064 7.462 7.462 0 0 0-.478-.198.798.798 0 0 1-.517-.608l-.091-.55a1.875 1.875 0 0 0-1.85-1.566h-.344ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" /></svg>;
   }
-  return <span aria-hidden="true">{icon}</span>;
+  if (icon === "clients") return <svg {...common}><path d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z"/><path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z"/></svg>;
+  if (icon === "activity") return <svg {...common}><circle cx="12" cy="12" r="9.5"/><path fill="none" stroke="#081a2a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 6.5V12h4"/></svg>;
+  return null;
 }
 
 export default function AdminLayout({
@@ -62,36 +68,34 @@ export default function AdminLayout({
   const [adminId, setAdminId] = useState("");
   const [unreadTicketActivity, setUnreadTicketActivity] = useState(0);
   const [authError, setAuthError] = useState("");
+  const [authRetry, setAuthRetry] = useState(0);
+  const [chatOpen, setChatOpen] = useState(false);
+
+  useAdminPageScrollLock(chatOpen || menuOpen);
+
+  const expireAdminSession = useCallback(() => {
+    setAuthorized(false);
+    setChecking(true);
+    setAdminId("");
+    setMenuOpen(false);
+    router.replace("/admin/login?reason=session-expired");
+  }, [router]);
+  useIdleSession(authorized && !isLoginPage ? adminId : "", expireAdminSession);
 
   useEffect(() => {
     if (!menuOpen) return;
 
-    const bodyOverflow = document.body.style.overflow;
-    const htmlOverflow = document.documentElement.style.overflow;
     const desktopViewport = window.matchMedia("(min-width: 1024px)");
-    const restorePageScroll = () => {
-      document.body.style.overflow = bodyOverflow;
-      document.documentElement.style.overflow = htmlOverflow;
-    };
     const handleViewportChange = (event: MediaQueryListEvent) => {
       if (event.matches) {
-        restorePageScroll();
         setMenuOpen(false);
-      } else {
-        document.body.style.overflow = "hidden";
-        document.documentElement.style.overflow = "hidden";
       }
     };
 
-    if (!desktopViewport.matches) {
-      document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-    }
     desktopViewport.addEventListener("change", handleViewportChange);
 
     return () => {
       desktopViewport.removeEventListener("change", handleViewportChange);
-      restorePageScroll();
     };
   }, [menuOpen]);
 
@@ -109,6 +113,17 @@ export default function AdminLayout({
       };
     }
 
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (active && event === "SIGNED_OUT") {
+        active = false;
+        setAuthorized(false);
+        setChecking(true);
+        setAdminId("");
+        setMenuOpen(false);
+        router.replace("/admin/login");
+      }
+    });
+
     async function checkAdmin() {
       setChecking(true);
       setAuthError("");
@@ -117,14 +132,16 @@ export default function AdminLayout({
       const {
         data: { user },
         error: userError,
-      } = await supabase.auth.getUser();
+      } = await withRequestTimeout(() => supabase.auth.getUser());
 
       if (!active) return;
 
-      if (userError || !user) {
-        router.replace("/admin/login");
+      if (userError) {
+        if (sessionHasEnded(userError)) router.replace("/admin/login?reason=session-expired");
+        else { setAuthError("We couldn't verify your session just now. Please try again."); setChecking(false); }
         return;
       }
+      if (!user) { router.replace("/admin/login"); return; }
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -157,12 +174,15 @@ export default function AdminLayout({
       setChecking(false);
     }
 
-    void checkAdmin();
+    void checkAdmin().catch(() => {
+      if (active) { setAuthError("We couldn't verify your session just now. Please try again."); setChecking(false); }
+    });
 
     return () => {
       active = false;
+      subscription.unsubscribe();
     };
-  }, [isLoginPage, router]);
+  }, [isLoginPage, router, authRetry]);
 
   // Count new tickets and public replies sent by clients.
   useEffect(() => {
@@ -225,7 +245,7 @@ export default function AdminLayout({
     };
 
     const recordActivity = (id: string) => {
-      if (!id || processedEvents.has(id)) return;
+      if (!active || !id || processedEvents.has(id)) return;
 
       processedEvents.add(id);
       liveEventVersion += 1;
@@ -236,7 +256,7 @@ export default function AdminLayout({
     };
 
     const channel = supabase
-      .channel("admin-ticket-activity-badge-" + adminId)
+      .channel("admin-ticket-activity-badge-" + adminId + ":" + crypto.randomUUID(), { config: { postgres_changes_options: { wait: true } } })
       .on(
         "postgres_changes",
         {
@@ -333,6 +353,7 @@ export default function AdminLayout({
               "This page is only available to authorized administrators."}
           </p>
 
+          <button type="button" onClick={() => setAuthRetry((count) => count + 1)} className="mt-5 mr-3 inline-flex rounded-xl bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950">Try again</button>
           <Link
             href="/admin/login"
             className="mt-5 inline-flex rounded-xl border border-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/5"
@@ -345,7 +366,8 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#04101d] text-slate-100 lg:flex">
+    <AdminChatLayoutContext.Provider value={setChatOpen}>
+    <div data-admin-conversation-open={chatOpen ? "true" : undefined} className={`admin-shell bg-[#04101d] text-slate-100 ${chatOpen ? "fixed inset-x-0 flex min-h-0 overflow-hidden" : "min-h-screen lg:flex"}`} style={chatOpen ? { top: "var(--admin-chat-viewport-top, 0px)", height: "var(--admin-chat-viewport-height, 100vh)" } : undefined}>
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_70%_0%,rgba(14,165,233,0.08),transparent_42%),radial-gradient(ellipse_at_5%_65%,rgba(20,184,166,0.045),transparent_34%)]" aria-hidden="true" />
 
       {menuOpen && (
@@ -357,6 +379,7 @@ export default function AdminLayout({
       )}
 
       <aside
+        style={chatOpen ? { top: "var(--admin-chat-viewport-top, 0px)", height: "var(--admin-chat-viewport-height, 100vh)" } : undefined}
         className={`fixed inset-y-0 left-0 z-50 flex h-[100dvh] w-[260px] flex-col overflow-hidden border-r border-cyan-200/10 bg-[#061523]/95 backdrop-blur-xl transition-transform duration-200 lg:translate-x-0 ${
           menuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -403,6 +426,7 @@ export default function AdminLayout({
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 onClick={() => setMenuOpen(false)}
                 className={`group flex items-center gap-3 rounded-xl border px-3 py-3 text-sm transition ${
                   active
@@ -455,8 +479,8 @@ export default function AdminLayout({
         </div>
       </aside>
 
-      <div className="relative min-w-0 flex-1 lg:ml-[260px]">
-        <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-white/[0.07] bg-[#04101d]/95 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+      <div className={`admin-shell-column relative min-w-0 flex-1 lg:ml-[260px] ${chatOpen ? "flex h-full min-h-0 flex-col overflow-hidden" : ""}`}>
+        <header className={`admin-shell-header z-30 flex items-center justify-between border-b border-white/[0.07] bg-[#04101d]/95 px-4 backdrop-blur-xl sm:px-6 lg:px-8 ${chatOpen ? "relative shrink-0 [--admin-header-padding:16px] sm:[--admin-header-padding:24px] lg:[--admin-header-padding:32px]" : "sticky top-0 h-[68px]"}`} style={chatOpen ? { height: "calc(68px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", paddingLeft: "max(var(--admin-header-padding), env(safe-area-inset-left))", paddingRight: "max(var(--admin-header-padding), env(safe-area-inset-right))" } : undefined}>
           <div className="flex min-w-0 items-center gap-3">
             <button
               onClick={() => setMenuOpen(true)}
@@ -491,10 +515,11 @@ export default function AdminLayout({
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">
+        <main className={`admin-shell-main w-full ${chatOpen ? "flex min-h-0 flex-1 overflow-hidden" : "mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8"}`}>
           {children}
         </main>
       </div>
     </div>
+    </AdminChatLayoutContext.Provider>
   );
 }

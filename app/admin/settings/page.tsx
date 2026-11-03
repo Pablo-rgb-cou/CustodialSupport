@@ -16,7 +16,7 @@ type Preferences = {
 };
 
 const initial: Preferences = {
-  supportEmail: "", supportHours: "Monday–Friday, 9:00 AM–5:00 PM",
+  supportEmail: "support@custodialmanagement.net", supportHours: "Monday–Friday, 9:00 AM–5:00 PM",
   replyTargetHours: 24, defaultPriority: "normal", waitingReminderHours: 48,
   defaultNotificationType: "information", notificationsEnabled: true,
   activityRotationSeconds: 60,
@@ -91,7 +91,7 @@ export default function AdminSettingsPage() {
     {loading ? <div className={card}><p className="text-sm text-slate-400">Loading settings…</p></div> : <>
       <div className="grid gap-5 xl:grid-cols-2">
         <section className={card}><h3 className="text-lg font-semibold text-white">Support</h3><p className="mt-1 text-sm text-slate-400">Contact details and response expectations.</p><div className="mt-5 space-y-4">
-          {label("Support email", "Address clients can use to contact support.", <input className={input} type="email" value={prefs.supportEmail} onChange={(e) => set("supportEmail", e.target.value)} placeholder="support@example.com" />)}
+          {label("Support email", "Address clients can use to contact support.", <input className={input} type="email" value={prefs.supportEmail} onChange={(e) => set("supportEmail", e.target.value)} placeholder="support@custodialmanagement.net" />)}
           {label("Support hours", "Shown as an admin reference for service availability.", <input className={input} value={prefs.supportHours} onChange={(e) => set("supportHours", e.target.value)} />)}
           {label("Reply target (hours)", "Internal target for responding to new tickets.", <input className={input} type="number" min={1} max={720} value={prefs.replyTargetHours} onChange={(e) => set("replyTargetHours", Number(e.target.value))} />)}
         </div></section>

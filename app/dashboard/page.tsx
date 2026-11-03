@@ -2,21 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import ClientTicketCards from "@/app/components/ClientTicketCards";
+import { useTicketAttachmentUrls } from "@/lib/use-ticket-attachment-urls";
+import { useClientTicketUnread } from "@/lib/use-client-ticket-unread";
+import { prepareTicketPhoto } from "@/lib/prepare-ticket-photo";
+import { dispatchTicketEmail } from "@/lib/dispatch-ticket-email";
+import { withRequestTimeout } from "@/lib/with-request-timeout";
+import { useIdleSession } from "@/lib/use-idle-session";
+import { sessionHasEnded } from "@/lib/session-activity";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-
-type Transaction = {
-  id: string;
-  reference: string;
-  asset: string | null;
-  cryptoAmount: number | null;
-  walletAddress: string | null;
-  fiatAmount: number;
-  currency: string;
-  status: "Completed" | "Processing" | "Pending" | "Failed" | "Cancelled";
-  date: string;
-  createdAtISO: string;
-};
+import { useClientTicketConversation, type ClientTicketMessage } from "@/lib/use-client-ticket-conversation";
+import { useClientTicketTyping } from "@/lib/use-client-ticket-typing";
+import WithdrawalRecords, { type WithdrawalRecord as Transaction } from "@/app/components/WithdrawalRecords";
 
 type Ticket = {
 id: string;
@@ -36,15 +34,6 @@ createdAtISO: string;
 const initialTickets: Ticket[] = [];
 
 type ClientNotification = { id: string; title: string; message: string; type: string; is_popup: boolean; read_at: string | null; created_at: string };
-
-type ClientTicketMessage = {
-  id: string;
-  ticket_id: string;
-  sender_id: string;
-  message: string;
-  is_internal: boolean;
-  created_at: string;
-};
 
 type ParsedTicketMessage = { text: string; photoPath?: string };
 
@@ -91,34 +80,6 @@ function mapClientWithdrawal(row: Record<string, unknown>): Transaction {
 }
 function mapClientTicket(row: Record<string, unknown>): Ticket {
   return { id: String(row.id), subject: String(row.subject ?? "Support request"), category: String(row.category ?? "Support"), amount: "", asset: "", network: "", walletAddress: "", transactionHash: "", description: String(row.description ?? ""), status: clientTicketStatus(String(row.status ?? "open")), createdAt: row.created_at ? new Date(String(row.created_at)).toLocaleString() : "—", createdAtISO: String(row.created_at ?? "") };
-}
-
-function splitTicketDescription(description: string) {
-  const detailLabels: Record<string, string> = {
-    amount: "Amount",
-    network: "Network",
-    "wallet address": "Wallet address",
-    "transaction reference": "Transaction reference",
-  };
-  const details: Array<{ label: string; value: string }> = [];
-  const requestLines: string[] = [];
-
-  for (const line of description.split(/\r?\n/)) {
-    const match = line.match(/^\s*(Amount|Network|Wallet address|Transaction reference):\s*(.*)\s*$/i);
-
-    if (match) {
-      const label = detailLabels[match[1].toLowerCase()];
-      const value = match[2].trim();
-      if (value) details.push({ label, value });
-    } else {
-      requestLines.push(line);
-    }
-  }
-
-  return {
-    summary: requestLines.join("\n").replace(/\n{3,}/g, "\n\n").trim(),
-    details,
-  };
 }
 
 function clientTicketStatus(status: string): Ticket["status"] {
@@ -173,34 +134,6 @@ function DashboardNavigationIcon({ icon }: { icon: string }) {
     return <svg {...common}><path fillRule="evenodd" clipRule="evenodd" d="M11.828 2.25c-.916 0-1.699.663-1.85 1.567l-.091.549a.798.798 0 0 1-.517.608 7.45 7.45 0 0 0-.478.198.798.798 0 0 1-.796-.064l-.453-.324a1.875 1.875 0 0 0-2.416.2l-.243.243a1.875 1.875 0 0 0-.2 2.416l.324.453a.798.798 0 0 1 .064.796 7.448 7.448 0 0 0-.198.478.798.798 0 0 1-.608.517l-.55.092a1.875 1.875 0 0 0-1.566 1.849v.344c0 .916.663 1.699 1.567 1.85l.549.091c.281.047.508.25.608.517.06.162.127.321.198.478a.798.798 0 0 1-.064.796l-.324.453a1.875 1.875 0 0 0 .2 2.416l.243.243c.648.648 1.67.733 2.416.2l.453-.324a.798.798 0 0 1 .796-.064c.157.071.316.137.478.198.267.1.47.327.517.608l.092.55c.15.903.932 1.566 1.849 1.566h.344c.916 0 1.699-.663 1.85-1.567l.091-.549a.798.798 0 0 1 .517-.608 7.52 7.52 0 0 0 .478-.198.798.798 0 0 1 .796.064l.453.324a1.875 1.875 0 0 0 2.416-.2l.243-.243c.648-.648.733-1.67.2-2.416l-.324-.453a.798.798 0 0 1-.064-.796c.071-.157.137-.316.198-.478.1-.267.327-.47.608-.517l.55-.091a1.875 1.875 0 0 0 1.566-1.85v-.344c0-.916-.663-1.699-1.567-1.85l-.549-.091a.798.798 0 0 1-.608-.517 7.507 7.507 0 0 0-.198-.478.798.798 0 0 1 .064-.796l.324-.453a1.875 1.875 0 0 0-.2-2.416l-.243-.243a1.875 1.875 0 0 0-2.416-.2l-.453.324a.798.798 0 0 1-.796.064 7.462 7.462 0 0 0-.478-.198.798.798 0 0 1-.517-.608l-.091-.55a1.875 1.875 0 0 0-1.85-1.566h-.344ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" /></svg>;
   }
   return <span aria-hidden="true">{icon}</span>;
-}
-
-function StatusBadge({ status }: { status: string }) {
-const styles: Record<string, string> = {
-Completed:
-"border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-Processing: "border-cyan-400/20 bg-cyan-400/10 text-cyan-300",
-Pending: "border-amber-400/20 bg-amber-400/10 text-amber-300",
-Failed: "border-rose-400/20 bg-rose-400/10 text-rose-300",
-Cancelled: "border-slate-400/20 bg-slate-400/10 text-slate-300",
-Open: "border-cyan-400/20 bg-cyan-400/10 text-cyan-300",
-"In progress": "border-blue-300/20 bg-blue-300/10 text-blue-200",
-"Waiting for client": "border-amber-300/20 bg-amber-300/10 text-amber-200",
-"In review": "border-amber-400/20 bg-amber-400/10 text-amber-300",
-Resolved:
-"border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-};
-
-return (
-<span
-className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium ${
-    styles[status] ?? "border-white/10 bg-white/5 text-slate-300"
-  }`}
->
-<span className="h-1.5 w-1.5 rounded-full bg-current" />
-{status}
-</span>
-);
 }
 
 function MetricCard({
@@ -479,22 +412,6 @@ function WithdrawalPayoutCard() {
   );
 }
 
-function formatFiatAmount(value: number, currency: string) {
-  const supportedCurrency = ["USD", "EUR", "GBP"].includes(currency) ? currency : "USD";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: supportedCurrency,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function formatCryptoAmount(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 12,
-    minimumFractionDigits: 0,
-  }).format(value);
-}
-
 export default function DashboardPage() {
 const router = useRouter();
 
@@ -508,6 +425,8 @@ const [signingOut, setSigningOut] = useState(false);
 
 const [activeSection, setActiveSection] = useState("Overview");
 const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+const activeSectionRef = useRef(activeSection);
+useEffect(() => { activeSectionRef.current = activeSection; }, [activeSection]);
 
 useEffect(() => {
   if (!mobileMenuOpen) return;
@@ -545,6 +464,11 @@ const [transactions, setTransactions] = useState<Transaction[]>([]);
 const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
 const [withdrawalsError, setWithdrawalsError] = useState("");
 const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
+const [ticketsLoading, setTicketsLoading] = useState(true);
+const [ticketsError, setTicketsError] = useState("");
+const [notificationsLoading, setNotificationsLoading] = useState(true);
+const [notificationsError, setNotificationsError] = useState("");
+const [dashboardRetryCount, setDashboardRetryCount] = useState(0);
 const [overviewMessages, setOverviewMessages] = useState<ClientTicketMessage[]>([]);
 const [notifications, setNotifications] = useState<ClientNotification[]>([]);
 const [selectedNotification, setSelectedNotification] = useState<ClientNotification | null>(null);
@@ -588,15 +512,25 @@ const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 const notificationReadAttempted = useRef(false);
 const [currentUserId, setCurrentUserId] = useState("");
 const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
-const [ticketMessages, setTicketMessages] = useState<ClientTicketMessage[]>([]);
+const { unreadByTicket, totalUnread: unreadTicketCount, markRead: markTicketMessagesRead, applyEvent: applyTicketUnreadEvent, refresh: refreshTicketUnread } = useClientTicketUnread(currentUserId);
+const {
+  messages: ticketMessages, loading: loadingTicketMessages,
+  error: ticketConversationError, reconnecting: ticketConversationReconnecting,
+  reload: reloadClientTicketMessages, addMessage: addClientTicketMessage,
+  prefetch: prefetchClientTicketMessages,
+} = useClientTicketConversation(currentUserId, selectedTicketId);
 const [ticketReply, setTicketReply] = useState("");
-const clientTypingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-const clientTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+const updateClientTyping = useClientTicketTyping(currentUserId, selectedTicketId);
+const clientConversationScrollRef = useRef<HTMLDivElement | null>(null);
+const clientFollowMessagesRef = useRef(true);
 const [ticketReplyPhoto, setTicketReplyPhoto] = useState<File | null>(null);
-const [ticketPhotoUrls, setTicketPhotoUrls] = useState<Record<string, string | null>>({});
+const ticketPhotoPaths = ticketMessages.flatMap((message) => {
+  const content = parseTicketMessage(message.message);
+  return content.photoPath ? [content.photoPath] : [];
+});
+const { urls: ticketPhotoUrls, retry: retryTicketPhoto } = useTicketAttachmentUrls(currentUserId, selectedTicketId, ticketPhotoPaths);
 const [ticketPhotoViewerUrl, setTicketPhotoViewerUrl] = useState<string | null>(null);
 const ticketPhotoInputRef = useRef<HTMLInputElement | null>(null);
-const [loadingTicketMessages, setLoadingTicketMessages] = useState(false);
 const [sendingTicketReply, setSendingTicketReply] = useState(false);
 
 useEffect(() => {
@@ -619,7 +553,6 @@ useEffect(() => {
 const [showTicketForm, setShowTicketForm] = useState(false);
 const [successMessage, setSuccessMessage] = useState("");
 const [notificationReadError, setNotificationReadError] = useState("");
-const [search, setSearch] = useState("");
 
 const [fullName, setFullName] = useState("");
 const [email, setEmail] = useState("");
@@ -707,176 +640,73 @@ function selectSection(label: string) {
   }
 }
 
-useEffect(() => {
-let active = true;
-setAuthLoading(true);
-setAuthCheckError("");
-setAuthSessionMissing(false);
-
-const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-  if (event === "SIGNED_OUT") {
-    router.replace("/login");
-  }
+useIdleSession(currentUserId, () => {
+  setCurrentUserId("");
+  setAuthLoading(true);
+  setSelectedTicketId(null);
+  setPopupNotification(null);
+  router.replace("/login?reason=session-expired");
 });
 
-async function requireFreshSignIn() {
-  if (!active) return;
+useEffect(() => {
+  let active = true;
+  const controller = new AbortController();
   setAuthLoading(true);
   setAuthCheckError("");
-  await supabase.auth.signOut({ scope: "local" });
-  if (active) router.replace("/login");
-}
+  setAuthSessionMissing(false);
 
-async function loadUser() {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (!active) return;
-
-  if (error) {
-    // A missing session is different from a temporary Auth/network verification failure.
-    // Check local storage so we don't tell an actually signed-out user that they remain signed in.
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!active) return;
-
-    const hasSavedSession = Boolean(sessionData.session);
-    const errorCode = String((error as { code?: string }).code ?? "").toLowerCase();
-    const errorStatus = Number((error as { status?: number }).status ?? 0);
-    const errorText = `${error.name} ${error.message} ${errorCode}`.toLowerCase();
-    const sessionIsExpired =
-      errorStatus === 401 ||
-      ["invalid_grant", "refresh_token_not_found", "session_not_found", "user_not_found"].includes(errorCode) ||
-      /session (has )?expired|jwt expired|refresh token.*(expired|invalid|not found)|invalid refresh token/.test(errorText);
-
-    if (!hasSavedSession || sessionIsExpired) {
-      setAuthSessionMissing(true);
-      await requireFreshSignIn();
-    } else {
-      console.warn("Could not verify the client session:", error.message);
-      setAuthCheckError(
-        "We couldn't verify your session just now. Your saved session is still available. Please try again."
-      );
+  const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT") {
+      setAuthLoading(true);
+      setCurrentUserId("");
+      setSelectedTicketId(null);
+      setPopupNotification(null);
+      popupAnnouncementCache.current = [];
+      router.replace("/login");
     }
-    setAuthLoading(false);
-    return;
+  });
+
+  async function requireFreshSignIn() {
+    if (!active) return;
+    setCurrentUserId("");
+    setAuthSessionMissing(true);
+    try { await withRequestTimeout(() => supabase.auth.signOut({ scope: "local" }), { signal: controller.signal, timeoutMs: 5000 }); }
+    finally { if (active) router.replace("/login"); }
   }
 
-  if (!user) {
-    await requireFreshSignIn();
-    return;
+  async function loadUser() {
+    try {
+      const { data: { user }, error } = await withRequestTimeout(() => supabase.auth.getUser(), { signal: controller.signal });
+      if (!active) return;
+      if (error) {
+        if (sessionHasEnded(error)) { await requireFreshSignIn(); return; }
+        throw new Error("We couldn't verify your session just now. Please try again.");
+      }
+      if (!user) { await requireFreshSignIn(); return; }
+      const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Client";
+      setCurrentUserId(user.id);
+      setUserName(name);
+      setUserEmail(user.email ?? "");
+      setFullName(name);
+      setEmail(user.email ?? "");
+      // Only authentication gates the page. Independent data sections load next.
+    } catch (error) {
+      if (active && !controller.signal.aborted) {
+        console.warn("Could not verify the client session:", error);
+        setAuthCheckError("We couldn't verify your session just now. Please try again.");
+      }
+    } finally {
+      if (active) setAuthLoading(false);
+    }
   }
-
-  const name =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    user.email?.split("@")[0] ||
-    "Client";
-
-  setCurrentUserId(user.id);
-  setUserName(name);
-  setUserEmail(user.email ?? "");
-  setFullName(name);
-  setEmail(user.email ?? "");
-
-  const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
-  if (!active) return;
-  if (profile?.full_name?.trim()) { setUserName(profile.full_name.trim()); setFullName(profile.full_name.trim()); }
-  const [noticeResult, unreadNoticeResult] = await Promise.all([
-    supabase.from("notifications")
-      .select("id, title, message, type, is_popup, read_at, created_at").eq("client_id", user.id)
-      .order("created_at", { ascending: false }).limit(100),
-    supabase.from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("client_id", user.id)
-      .is("read_at", null)
-      .eq("is_popup", false),
-  ]);
-  if (!active) return;
-  if (!noticeResult.error) setNotifications((noticeResult.data ?? []) as ClientNotification[]);
-  if (!unreadNoticeResult.error) setUnreadNotificationCount(unreadNoticeResult.count ?? 0);
-
-  // Load only this authenticated client's real withdrawal records.
-  setWithdrawalsLoading(true);
-  setWithdrawalsError("");
-  const { data: withdrawalRows, error: withdrawalError } = await supabase
-    .from("withdrawals")
-    .select("id, amount, currency, crypto_asset, crypto_amount, wallet_address, status, transaction_reference, created_at")
-    .eq("client_id", user.id)
-    .order("created_at", { ascending: false });
-
-  if (!active) return;
-
-  if (withdrawalError) {
-    console.error("Could not load withdrawal records:", withdrawalError.message);
-    setWithdrawalsError("Your withdrawal records could not be loaded. Please refresh the page.");
-    setTransactions([]);
-  } else {
-    const mappedWithdrawals: Transaction[] = (withdrawalRows ?? []).map((row) => {
-      const rawStatus = String(row.status ?? "pending").toLowerCase();
-      const status: Transaction["status"] =
-        rawStatus === "completed" ? "Completed" :
-        rawStatus === "processing" ? "Processing" :
-        rawStatus === "failed" ? "Failed" :
-        rawStatus === "cancelled" ? "Cancelled" : "Pending";
-
-      return {
-        id: String(row.id),
-        reference: row.transaction_reference?.trim() || String(row.id),
-        asset: row.crypto_asset ? String(row.crypto_asset).toUpperCase() : null,
-        cryptoAmount: row.crypto_amount === null || row.crypto_amount === undefined
-          ? null
-          : Number(row.crypto_amount),
-        walletAddress: typeof row.wallet_address === "string" && row.wallet_address.trim()
-          ? row.wallet_address.trim()
-          : null,
-        fiatAmount: Number(row.amount),
-        currency: String(row.currency || "USD").toUpperCase(),
-        status,
-        date: row.created_at ? new Date(row.created_at).toLocaleString() : "—",
-        createdAtISO: String(row.created_at ?? ""),
-      };
-    });
-    setTransactions(mappedWithdrawals);
-  }
-  setWithdrawalsLoading(false);
-
-  const { data: ticketRows, error: ticketError } = await supabase
-    .from("support_tickets")
-    .select("id, subject, category, description, status, created_at")
-    .eq("client_id", user.id)
-    .order("created_at", { ascending: false });
-  if (ticketError) {
-    console.error("Could not load support tickets:", ticketError.message);
-  } else {
-    const mapped: Ticket[] = (ticketRows ?? []).map((row) => ({
-      id: row.id,
-      subject: row.subject,
-      category: row.category,
-      amount: "",
-      asset: "",
-      network: "",
-      walletAddress: "",
-      transactionHash: "",
-      description: row.description,
-      status: clientTicketStatus(String(row.status ?? "open")),
-      createdAt: new Date(row.created_at).toLocaleString(),
-      createdAtISO: String(row.created_at ?? ""),
-    }));
-    setTickets(mapped);
-  }
-  setAuthLoading(false);
-}
-
-loadUser();
-
-return () => {
-  active = false;
-  authListener.subscription.unsubscribe();
-};
-
+  void loadUser();
+  return () => {
+    active = false;
+    controller.abort();
+    authListener.subscription.unsubscribe();
+  };
 }, [router, authRetryCount]);
+
 
 async function handleSignOut() {
 setSigningOut(true);
@@ -968,6 +798,7 @@ const newTicket: Ticket = {
   createdAt: new Date(created.created_at).toLocaleString(),
   createdAtISO: String(created.created_at ?? ""),
 };
+void dispatchTicketEmail(created.id);
 setTickets((current) => [newTicket, ...current]);
 setShowTicketForm(false);
 selectSection("Support tickets");
@@ -978,24 +809,6 @@ setWalletAddress("");
 setTransactionHash("");
 setDescription("");
 
-}
-
-async function loadClientTicketMessages(ticketId: string) {
-  setLoadingTicketMessages(true);
-  const { data, error } = await supabase
-    .from("ticket_messages")
-    .select("id, ticket_id, sender_id, message, is_internal, created_at")
-    .eq("ticket_id", ticketId)
-    .eq("is_internal", false)
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    console.error("Could not load ticket conversation:", error.message);
-    setFormError("The ticket conversation could not be loaded. Please refresh.");
-  } else {
-    setTicketMessages((data ?? []) as ClientTicketMessage[]);
-  }
-  setLoadingTicketMessages(false);
 }
 
 function handleTicketPhotoSelection(event: React.ChangeEvent<HTMLInputElement>) {
@@ -1039,15 +852,16 @@ async function handleClientTicketReply(event: React.FormEvent<HTMLFormElement>) 
     let photoPath: string | null = null;
 
     if (photo) {
-      const extension = ticketPhotoExtensions[photo.type];
+      const uploadPhoto = await prepareTicketPhoto(photo);
+      const extension = ticketPhotoExtensions[uploadPhoto.type];
       if (!extension) throw new Error("Choose a supported photo file.");
 
       photoPath = `${selectedTicketId}/${user.id}/${crypto.randomUUID()}.${extension}`;
       const { error: uploadError } = await supabase.storage
         .from("ticket-attachments")
-        .upload(photoPath, photo, {
+        .upload(photoPath, uploadPhoto, {
           cacheControl: "3600",
-          contentType: photo.type,
+          contentType: uploadPhoto.type,
           upsert: false,
         });
 
@@ -1060,12 +874,12 @@ async function handleClientTicketReply(event: React.FormEvent<HTMLFormElement>) 
       ? encodeTicketPhotoMessage(messageText, photoPath)
       : messageText;
 
-    const { error: insertError } = await supabase.from("ticket_messages").insert({
+    const { data: sentMessage, error: insertError } = await supabase.from("ticket_messages").insert({
       ticket_id: selectedTicketId,
       sender_id: user.id,
       message: storedMessage,
       is_internal: false,
-    });
+    }).select("id, ticket_id, sender_id, message, is_internal, created_at").single();
 
     if (insertError) {
       if (photoPath) {
@@ -1080,13 +894,12 @@ async function handleClientTicketReply(event: React.FormEvent<HTMLFormElement>) 
     }
 
     setTicketReply("");
-    if (clientTypingTimeoutRef.current) {
-      clearTimeout(clientTypingTimeoutRef.current);
-      clientTypingTimeoutRef.current = null;
-    }
-    void clientTypingChannelRef.current?.send({ type: "broadcast", event: "typing", payload: { actor: "client", isTyping: false } });
+    updateClientTyping(false);
+    clientFollowMessagesRef.current = true;
+    if (sentMessage) addClientTicketMessage(sentMessage as ClientTicketMessage);
+    if (sentMessage) void dispatchTicketEmail(selectedTicketId);
     setTicketReplyPhoto(null);
-    await loadClientTicketMessages(selectedTicketId);
+    void reloadClientTicketMessages();
     setSuccessMessage("Your reply has been sent to support.");
   } catch (replyError) {
     setFormError(
@@ -1102,178 +915,173 @@ async function handleClientTicketReply(event: React.FormEvent<HTMLFormElement>) 
 useEffect(() => {
   setTicketReply("");
   setTicketReplyPhoto(null);
-  if (!selectedTicketId) {
-    setTicketMessages([]);
-    return;
-  }
-  void loadClientTicketMessages(selectedTicketId);
+  clientFollowMessagesRef.current = true;
 }, [selectedTicketId]);
 
-// Typing is a transient, ticket-scoped Broadcast. Only a boolean is sent; the
-// draft text is never transmitted or stored. The matching admin chat listens
-// on the same private topic.
 useEffect(() => {
-  if (!currentUserId || !selectedTicketId) return;
+  if (activeSection !== "Support tickets" || selectedTicketId || !currentUserId) return;
+  const firstTicket = tickets[0];
+  if (firstTicket) void prefetchClientTicketMessages(firstTicket.id);
+}, [activeSection, currentUserId, prefetchClientTicketMessages, selectedTicketId, tickets]);
 
-  const channel = supabase
-    .channel(`ticket-typing:${selectedTicketId}`, { config: { private: true } })
-    .subscribe();
-  clientTypingChannelRef.current = channel;
+useEffect(() => {
+  const scroll = clientConversationScrollRef.current;
+  if (scroll && clientFollowMessagesRef.current) scroll.scrollTop = scroll.scrollHeight;
+}, [ticketMessages, loadingTicketMessages]);
 
-  return () => {
-    if (clientTypingTimeoutRef.current) {
-      clearTimeout(clientTypingTimeoutRef.current);
-      clientTypingTimeoutRef.current = null;
-    }
-    if (clientTypingChannelRef.current === channel) clientTypingChannelRef.current = null;
-    void channel.send({ type: "broadcast", event: "typing", payload: { actor: "client", isTyping: false } });
-    void supabase.removeChannel(channel);
+useEffect(() => {
+  if (activeSection !== "Support tickets" || !selectedTicketId || loadingTicketMessages || ticketConversationError) return;
+  const markVisible = () => {
+    const panel = clientConversationScrollRef.current;
+    if (document.visibilityState === "visible" && !popupNotification && !ticketPhotoViewerUrl && !selectedNotification && !mobileMenuOpen && panel && panel.scrollHeight - panel.scrollTop - panel.clientHeight < 80) markTicketMessagesRead(selectedTicketId, ticketMessages);
   };
-}, [currentUserId, selectedTicketId]);
+  const frame = requestAnimationFrame(markVisible);
+  document.addEventListener("visibilitychange", markVisible);
+  return () => { cancelAnimationFrame(frame); document.removeEventListener("visibilitychange", markVisible); };
+}, [activeSection, selectedTicketId, loadingTicketMessages, ticketConversationError, ticketMessages, markTicketMessagesRead, popupNotification, ticketPhotoViewerUrl, selectedNotification, mobileMenuOpen]);
 
 function handleClientTicketReplyChange(value: string) {
   setTicketReply(value);
-  if (clientTypingTimeoutRef.current) {
-    clearTimeout(clientTypingTimeoutRef.current);
-    clientTypingTimeoutRef.current = null;
-  }
-
-  const channel = clientTypingChannelRef.current;
-  if (!channel) return;
-
-  const isTyping = Boolean(value.trim());
-  void channel.send({ type: "broadcast", event: "typing", payload: { actor: "client", isTyping } });
-  if (isTyping) {
-    clientTypingTimeoutRef.current = setTimeout(() => {
-      void channel.send({ type: "broadcast", event: "typing", payload: { actor: "client", isTyping: false } });
-      clientTypingTimeoutRef.current = null;
-    }, 1800);
-  }
+  updateClientTyping(Boolean(value.trim()));
 }
 
 useEffect(() => {
+  if (authLoading || !currentUserId) return;
   let active = true;
-  const photoPaths = Array.from(
-    new Set(
-      ticketMessages.flatMap((message) => {
-        const parsed = parseTicketMessage(message.message);
-        return parsed.photoPath?.startsWith(`${message.ticket_id}/`)
-          ? [parsed.photoPath]
-          : [];
-      })
-    )
-  );
+  let inFlight = false;
+  let queued = false;
+  const controller = new AbortController();
+  const revision = { withdrawals: 0, tickets: 0, notifications: 0, messages: 0, profile: 0 };
+  type Entry = { revision: number; row: Record<string, unknown> | null };
+  const journals = { withdrawals: new Map<string, Entry>(), tickets: new Map<string, Entry>(), notifications: new Map<string, Entry>(), messages: new Map<string, Entry>() };
+  const remember = (key: keyof typeof journals, change: { eventType: string; old: unknown; new: unknown }) => {
+    const row = (change.eventType === "DELETE" ? change.old : change.new) as Record<string, unknown>;
+    if (typeof row.id === "string") journals[key].set(row.id, { revision: revision[key], row: change.eventType === "DELETE" ? null : row });
+  };
+  const loaded = { withdrawals: false, tickets: false, notifications: false };
+  setWithdrawalsLoading(true);
+  setTicketsLoading(true);
+  setNotificationsLoading(true);
+  setWithdrawalsError("");
+  setTicketsError("");
+  setNotificationsError("");
 
-  if (photoPaths.length === 0) {
-    setTicketPhotoUrls({});
-    return () => {
-      active = false;
-    };
-  }
-
-  void Promise.all(
-    photoPaths.map(async (path) => {
-      try {
-        const { data, error } = await supabase.storage
-          .from("ticket-attachments")
-          .createSignedUrl(path, 60 * 60);
-        if (error) console.error("Could not create ticket photo link:", error.message);
-        return [path, error ? null : data?.signedUrl ?? null] as const;
-      } catch (error) {
-        console.error("Could not create ticket photo link:", error);
-        return [path, null] as const;
+  const request = <T,>(factory: (signal: AbortSignal) => PromiseLike<T>) => withRequestTimeout(factory, { signal: controller.signal });
+  const refresh = async () => {
+    if (!active) return;
+    if (inFlight) { queued = true; return; }
+    inFlight = true;
+    const started = { ...revision };
+    const current = (key: keyof typeof revision) => active && revision[key] === started[key];
+    const merge = <Row extends { id: string },>(key: keyof typeof journals, rows: Row[]): Row[] => {
+      const merged = new Map(rows.map((row) => [row.id, row]));
+      for (const [id, event] of journals[key]) {
+        if (event.revision <= started[key]) { journals[key].delete(id); continue; }
+        if (event.row) merged.set(id, event.row as Row); else merged.delete(id);
       }
-    })
-  ).then((entries) => {
-    if (active) setTicketPhotoUrls(Object.fromEntries(entries));
-  });
+      return [...merged.values()];
+    };
+    // Publish each section as soon as it arrives; one slow service cannot hold the dashboard.
+    await Promise.allSettled([
+      request((signal) => supabase.from("withdrawals").select("id, amount, currency, crypto_asset, crypto_amount, wallet_address, status, transaction_reference, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }).abortSignal(signal)).then(({ data, error }) => {
+        if (!active) return;
+        if (error) throw new Error(error.message);
+        setTransactions(merge("withdrawals", data ?? []).map(mapClientWithdrawal));
+        loaded.withdrawals = true;
+        setWithdrawalsError("");
+      }).catch((error) => { if (active && !loaded.withdrawals) setWithdrawalsError("Your withdrawals could not be loaded. Please try again."); console.warn("Withdrawal refresh failed:", error); }).finally(() => { if (active) setWithdrawalsLoading(false); }),
+      request((signal) => supabase.from("support_tickets").select("id, subject, category, description, status, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }).abortSignal(signal)).then(({ data, error }) => {
+        if (!active) return;
+        if (error) throw new Error(error.message);
+        setTickets(merge("tickets", data ?? []).map(mapClientTicket));
+        loaded.tickets = true;
+        setTicketsError("");
+      }).catch((error) => { if (active && !loaded.tickets) setTicketsError("Your support tickets could not be loaded. Please try again."); console.warn("Ticket refresh failed:", error); }).finally(() => { if (active) setTicketsLoading(false); }),
+      request((signal) => supabase.from("notifications").select("id, title, message, type, is_popup, read_at, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }).limit(100).abortSignal(signal)).then(({ data, error }) => {
+        if (!active) return;
+        if (error) throw new Error(error.message);
+        setNotifications(merge("notifications", data ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 100) as ClientNotification[]);
+        loaded.notifications = true;
+        setNotificationsError("");
+      }).catch((error) => { if (active && !loaded.notifications) setNotificationsError("Your notifications could not be loaded. Please try again."); console.warn("Notification refresh failed:", error); }).finally(() => { if (active) setNotificationsLoading(false); }),
+      request((signal) => supabase.from("client_ticket_message_realtime").select("id, ticket_id, client_id, sender_id, message, is_internal, created_at").eq("client_id", currentUserId).eq("is_internal", false).order("created_at", { ascending: false }).limit(8).abortSignal(signal)).then(({ data, error }) => {
+        if (error) throw new Error(error.message);
+        if (active) setOverviewMessages(merge("messages", data ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8) as ClientTicketMessage[]);
+      }).catch((error) => { if (active) console.warn("Recent activity refresh failed:", error); }),
+      request((signal) => supabase.from("notifications").select("id", { count: "exact", head: true }).eq("client_id", currentUserId).is("read_at", null).eq("is_popup", false).abortSignal(signal)).then(({ count, error }) => {
+        if (error) throw new Error(error.message);
+        if (current("notifications")) setUnreadNotificationCount(count ?? 0);
+      }).catch((error) => { if (active) console.warn("Notification count refresh failed:", error); }),
+      request((signal) => supabase.from("profiles").select("full_name").eq("id", currentUserId).abortSignal(signal).maybeSingle()).then(({ data, error }) => {
+        if (error) throw new Error(error.message);
+        if (current("profile") && data?.full_name?.trim()) { setUserName(data.full_name.trim()); setFullName(data.full_name.trim()); }
+      }).catch((error) => { if (active) console.warn("Profile refresh failed:", error); }),
+    ]);
+    inFlight = false;
+    if (active && queued) { queued = false; void refresh(); }
+  };
 
+  const channel = supabase.channel(`client-dashboard:${currentUserId}:${crypto.randomUUID()}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "client_profile_realtime", filter: `id=eq.${currentUserId}` }, (payload) => {
+      if (!active) return;
+      revision.profile += 1;
+      const row = payload.new as { full_name?: string | null };
+      const name = payload.eventType === "DELETE" ? "Client" : row.full_name?.trim() || "Client";
+      setUserName(name); setFullName(name);
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "client_withdrawal_realtime", filter: `client_id=eq.${currentUserId}` }, (payload) => {
+      if (!active) return;
+      revision.withdrawals += 1;
+      remember("withdrawals", payload);
+      const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as Record<string, unknown>;
+      if (payload.eventType === "DELETE") setTransactions((items) => items.filter((item) => item.id !== row.id));
+      else { const item = mapClientWithdrawal(row); setTransactions((items) => [item, ...items.filter((entry) => entry.id !== item.id)]); }
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets", filter: `client_id=eq.${currentUserId}` }, (payload) => {
+      if (!active) return;
+      revision.tickets += 1;
+      remember("tickets", payload);
+      const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as Record<string, unknown>;
+      if (payload.eventType === "DELETE") setTickets((items) => items.filter((item) => item.id !== row.id));
+      else { const item = mapClientTicket(row); setTickets((items) => [item, ...items.filter((entry) => entry.id !== item.id)]); }
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "client_ticket_message_realtime", filter: `client_id=eq.${currentUserId}` }, (payload) => {
+      if (!active) return;
+      revision.messages += 1;
+      remember("messages", payload);
+      applyTicketUnreadEvent(payload);
+      const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as ClientTicketMessage & { client_id?: string };
+      if (payload.eventType === "DELETE") setOverviewMessages((items) => items.filter((item) => item.id !== row.id));
+      else if (row.client_id === currentUserId && !row.is_internal) setOverviewMessages((items) => [row, ...items.filter((item) => item.id !== row.id)].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8));
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `client_id=eq.${currentUserId}` }, (payload) => {
+      if (!active) return;
+      revision.notifications += 1;
+      remember("notifications", payload);
+      const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as ClientNotification;
+      if (payload.eventType !== "DELETE" && row.read_at === null && activeSectionRef.current === "Notifications") notificationReadAttempted.current = false;
+      if (payload.eventType === "DELETE") setNotifications((items) => items.filter((item) => item.id !== row.id));
+      else setNotifications((items) => [row, ...items.filter((item) => item.id !== row.id)].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 100));
+      void request((signal) => supabase.from("notifications").select("id", { count: "exact", head: true }).eq("client_id", currentUserId).is("read_at", null).eq("is_popup", false).abortSignal(signal)).then(({ count, error }) => { if (active && !error) setUnreadNotificationCount(count ?? 0); }).catch(() => {});
+    })
+    .subscribe((status) => {
+      if (!active) return;
+      if (status === "SUBSCRIBED") { void refresh(); void refreshTicketUnread(true); }
+    });
+  // Data loading starts immediately and never waits for a WebSocket handshake.
+  void refresh();
+  const recover = () => { if (document.visibilityState === "visible") { void refresh(); void refreshTicketUnread(); } };
+  window.addEventListener("online", recover);
+  document.addEventListener("visibilitychange", recover);
   return () => {
     active = false;
-  };
-}, [ticketMessages]);
-
-// Subscribe only to this client's rows, then reconcile from the database after reconnects.
-useEffect(() => {
-  if (authLoading || !currentUserId) return;
-  let refreshInFlight = false;
-  const refresh = async () => {
-    if (refreshInFlight) return;
-    refreshInFlight = true;
-    try {
-      const [w, t, n, m, activityMessages, unreadNotices] = await Promise.all([
-        supabase.from("withdrawals").select("id, amount, currency, crypto_asset, crypto_amount, wallet_address, status, transaction_reference, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }),
-        supabase.from("support_tickets").select("id, subject, category, description, status, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }),
-        supabase.from("notifications").select("id, title, message, type, is_popup, read_at, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }).limit(100),
-        selectedTicketId ? supabase.from("ticket_messages").select("id, ticket_id, sender_id, message, is_internal, created_at").eq("ticket_id", selectedTicketId).eq("is_internal", false).order("created_at", { ascending: true }) : Promise.resolve({ data: [], error: null }),
-        supabase.from("client_ticket_message_realtime").select("id, ticket_id, client_id, sender_id, message, is_internal, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }).limit(8),
-        supabase.from("notifications").select("id", { count: "exact", head: true }).eq("client_id", currentUserId).is("read_at", null).eq("is_popup", false),
-      ]);
-      if (!w.error) setTransactions((w.data ?? []).map((row) => mapClientWithdrawal(row)));
-      if (!t.error) setTickets((t.data ?? []).map((row) => mapClientTicket(row)));
-      if (!n.error) setNotifications((n.data ?? []) as ClientNotification[]);
-      if (!unreadNotices.error) setUnreadNotificationCount(unreadNotices.count ?? 0);
-      if (!m.error) setTicketMessages((m.data ?? []) as ClientTicketMessage[]);
-      if (!activityMessages.error) setOverviewMessages((activityMessages.data ?? []) as ClientTicketMessage[]);
-      const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", currentUserId).maybeSingle();
-      if (profile?.full_name?.trim()) setUserName(profile.full_name.trim());
-    } finally { refreshInFlight = false; }
-  };
-  const channel = supabase.channel("client-dashboard-" + currentUserId)
-    .on("postgres_changes", { event: "*", schema: "public", table: "client_profile_realtime", filter: "id=eq." + currentUserId }, (payload) => {
-      const row = (payload.new ?? {}) as { full_name?: string | null };
-      if (payload.eventType !== "DELETE") setUserName(row.full_name?.trim() || "Client");
-      else setUserName("Client");
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "client_withdrawal_realtime", filter: "client_id=eq." + currentUserId }, (payload) => {
-      const row = (payload.new ?? payload.old) as Record<string, unknown>;
-      if (payload.eventType === "DELETE") setTransactions((current) => current.filter((item) => item.id !== String(row.id)));
-      else { const item = mapClientWithdrawal(row); setTransactions((current) => [item, ...current.filter((entry) => entry.id !== item.id)]); }
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets", filter: "client_id=eq." + currentUserId }, (payload) => {
-      const row = (payload.new ?? payload.old) as Record<string, unknown>;
-      if (payload.eventType === "DELETE") setTickets((current) => current.filter((item) => item.id !== String(row.id)));
-      else { const item = mapClientTicket(row); setTickets((current) => [item, ...current.filter((entry) => entry.id !== item.id)]); }
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "client_ticket_message_realtime", filter: "client_id=eq." + currentUserId }, (payload) => {
-      const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as ClientTicketMessage & { client_id?: string };
-      if (row.client_id !== currentUserId || row.is_internal) return;
-      if (payload.eventType === "DELETE") {
-        setOverviewMessages((current) => current.filter((item) => item.id !== row.id));
-        if (row.ticket_id === selectedTicketId) setTicketMessages((current) => current.filter((item) => item.id !== row.id));
-        return;
-      }
-      setOverviewMessages((current) => [row, ...current.filter((item) => item.id !== row.id)].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8));
-      if (row.ticket_id === selectedTicketId) {
-        setTicketMessages((current) => [...current.filter((item) => item.id !== row.id), row].sort((a, b) => a.created_at.localeCompare(b.created_at)));
-      }
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: "client_id=eq." + currentUserId }, (payload) => {
-      const row = (payload.new ?? payload.old) as ClientNotification;
-      if (payload.eventType !== "DELETE" && row.read_at === null && activeSection === "Notifications") {
-        notificationReadAttempted.current = false;
-      }
-      if (payload.eventType === "DELETE") setNotifications((current) => current.filter((item) => item.id !== row.id));
-      else setNotifications((current) => [row, ...current.filter((item) => item.id !== row.id)].sort((a,b) => b.created_at.localeCompare(a.created_at)).slice(0,100));
-      void supabase.from("notifications")
-        .select("id", { count: "exact", head: true })
-        .eq("client_id", currentUserId)
-        .is("read_at", null)
-        .eq("is_popup", false)
-        .then(({ count, error }) => {
-          if (!error) setUnreadNotificationCount(count ?? 0);
-        });
-    })
-    .subscribe((status) => { if (status === "SUBSCRIBED") void refresh(); });
-  const onFocus = () => { if (document.visibilityState === "visible") void refresh(); };
-  window.addEventListener("online", onFocus);
-  document.addEventListener("visibilitychange", onFocus);
-  return () => {
-    window.removeEventListener("online", onFocus);
-    document.removeEventListener("visibilitychange", onFocus);
+    controller.abort();
+    window.removeEventListener("online", recover);
+    document.removeEventListener("visibilitychange", recover);
     void supabase.removeChannel(channel);
   };
-}, [authLoading, currentUserId, selectedTicketId]);
+}, [authLoading, currentUserId, dashboardRetryCount, applyTicketUnreadEvent, refreshTicketUnread]);
+
 
 // Opening Notifications marks every currently unread item as read. Keep the
 // badge optimistic, then persist read_at under the client's own-row RLS policy.
@@ -1419,12 +1227,6 @@ const handleNextStep = () => {
   setShowTicketForm(Boolean("openTicketForm" in nextStep && nextStep.openTicketForm));
 };
 
-const filteredTransactions = transactions.filter((transaction) =>
-  `${transaction.reference} ${transaction.asset} ${transaction.status}`
-    .toLowerCase()
-    .includes(search.toLowerCase())
-);
-
 const isTicketChatOpen = activeSection === "Support tickets" && Boolean(selectedTicketId);
 
 useEffect(() => {
@@ -1469,7 +1271,7 @@ if (authCheckError) {
   );
 }
 
-if (authLoading) {
+if (authLoading || !currentUserId) {
 return (
 <main className="flex min-h-screen items-center justify-center bg-[#060d18] text-white">
 <div className="text-center">
@@ -1483,18 +1285,18 @@ Loading your dashboard...
 }
 
 return (
-<main className={`${isTicketChatOpen ? "h-dvh overflow-hidden" : "min-h-screen"} bg-[#020a14] text-white selection:bg-cyan-300/25 selection:text-cyan-50`}>
+<main className={`${isTicketChatOpen ? "h-[100dvh] min-h-0 overflow-hidden" : "min-h-screen"} bg-[#020a14] text-white selection:bg-cyan-300/25 selection:text-cyan-50`}>
 <div className={`relative isolate flex ${isTicketChatOpen ? "h-full min-h-0 overflow-hidden" : "min-h-screen overflow-x-clip"} bg-[radial-gradient(ellipse_at_72%_0%,rgba(14,165,233,0.14),transparent_34%),radial-gradient(ellipse_at_4%_56%,rgba(8,145,178,0.09),transparent_30%),linear-gradient(135deg,#020a14_0%,#07182a_48%,#020a14_100%)]`}>
 {/* Sidebar */}
 <aside className="fixed inset-y-0 left-0 z-30 hidden h-dvh w-[270px] shrink-0 flex-col border-r border-cyan-200/[0.07] bg-[#04101e]/95 shadow-[12px_0_40px_rgba(0,0,0,0.12)] lg:flex">
-<a href="/dashboard" className="flex h-20 items-center gap-3 border-b border-white/[0.07] px-6 transition hover:bg-white/[0.02]">
+<Link href="/dashboard?section=Overview" className="flex h-20 items-center gap-3 border-b border-white/[0.07] px-6 transition hover:bg-white/[0.02]">
 <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200/20 bg-gradient-to-br from-cyan-300/20 to-blue-500/10 text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
 <svg aria-hidden="true" viewBox="0 0 32 32" fill="none" className="h-7 w-7"><path d="M16 2.8 27 7v8.1c0 7.1-4.5 11.8-11 14.1C9.5 26.9 5 22.2 5 15.1V7l11-4.2Z" fill="currentColor" fillOpacity=".16" stroke="currentColor" strokeWidth="1.6"/><path d="m10.5 15.8 3.5 3.4 7.6-8" stroke="#99F6E4" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
 </span>
 <span className="text-base font-bold">
 Custodial<span className="text-cyan-300">Support</span>
 </span>
-</a>
+</Link>
 
       <div className="px-4 pt-8">
         <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -1527,9 +1329,9 @@ Custodial<span className="text-cyan-300">Support</span>
                       : pendingOrProcessingWithdrawalCount}
                   </span>
                 )}
-              {item.label === "Support tickets" && tickets.length > 0 && (
+              {item.label === "Support tickets" && unreadTicketCount > 0 && (
                 <span className="ml-auto rounded-full bg-cyan-300/15 px-2 py-0.5 text-xs text-cyan-200">
-                  {tickets.length}
+                  {unreadTicketCount > 99 ? "99+" : unreadTicketCount}
                 </span>
               )}
               {item.label === "Notifications" && unreadNotificationCount > 0 && (
@@ -1643,8 +1445,8 @@ Custodial<span className="text-cyan-300">Support</span>
                     {pendingOrProcessingWithdrawalCount > 99 ? "99+" : pendingOrProcessingWithdrawalCount}
                   </span>
                 )}
-                {item.label === "Support tickets" && tickets.length > 0 && (
-                  <span className="ml-auto rounded-full bg-cyan-300/15 px-2 py-0.5 text-xs text-cyan-200">{tickets.length}</span>
+                {item.label === "Support tickets" && unreadTicketCount > 0 && (
+                  <span className="ml-auto rounded-full bg-cyan-300/15 px-2 py-0.5 text-xs text-cyan-200">{unreadTicketCount > 99 ? "99+" : unreadTicketCount}</span>
                 )}
                 {item.label === "Notifications" && unreadNotificationCount > 0 && (
                   <span
@@ -1774,25 +1576,25 @@ Custodial<span className="text-cyan-300">Support</span>
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [&>div:nth-child(2)]:border-amber-300/15 [&>div:nth-child(2)]:from-[#2b261f] [&>div:nth-child(2)]:via-[#111d2c] [&>div:nth-child(3)]:border-blue-300/15 [&>div:nth-child(3)]:from-[#142c49] [&>div:nth-child(3)]:via-[#0a1c30] [&>div:nth-child(4)]:border-cyan-300/15 [&>div:nth-child(4)]:from-[#10343b] [&>div:nth-child(4)]:via-[#0a1c30]">
               <MetricCard
                 title="Withdrawal records"
-                value={String(transactions.length)}
+                value={withdrawalsLoading ? "—" : String(transactions.length)}
                 description="Records linked to your account"
                 icon="↗"
               />
               <MetricCard
                 title="Pending or processing"
-                value={String(pendingOrProcessingWithdrawalCount)}
+                value={withdrawalsLoading ? "—" : String(pendingOrProcessingWithdrawalCount)}
                 description="Records awaiting an update"
                 icon="◷"
               />
               <MetricCard
                 title="Open support tickets"
-                value={String(activeTickets.length)}
+                value={ticketsLoading ? "—" : String(activeTickets.length)}
                 description="Conversations still in progress"
                 icon="▤"
               />
               <MetricCard
                 title="Unread notifications"
-                value={String(unreadNotificationCount)}
+                value={notificationsLoading ? "—" : String(unreadNotificationCount)}
                 description="Account updates to review"
                 icon="♧"
               />
@@ -1913,90 +1715,8 @@ Custodial<span className="text-cyan-300">Support</span>
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#0c2238] via-[#081a2c] to-[#061321] shadow-[0_16px_44px_rgba(0,0,0,0.20)]">
-            <div className="flex flex-col justify-between gap-4 border-b border-white/[0.08] p-5 sm:flex-row sm:items-center sm:p-6">
-              <div>
-                <h2 className="font-semibold">Withdrawal records</h2>
-                <p className="mt-1 text-xs text-slate-500">
-                  Withdrawal requests recorded for your account. Transaction entries shown are withdrawal records.
-                </p>
-              </div>
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search reference, asset, status..."
-                aria-label="Search withdrawal records"
-                className="w-full rounded-xl border border-white/[0.09] bg-[#07111f]/80 px-4 py-3 text-sm outline-none transition placeholder:text-slate-600 focus:border-cyan-300/60 focus:ring-4 focus:ring-cyan-300/[0.07] sm:max-w-xs"
-              />
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-sm">
-                <thead className="text-xs text-slate-500">
-                  <tr>
-                    <th className="px-6 py-4 font-medium">Reference</th>
-                    <th className="px-6 py-4 font-medium">Crypto asset</th>
-                    <th className="px-6 py-4 font-medium">Withdrawal amount</th>
-                    <th className="px-6 py-4 font-medium">Wallet address</th>
-                    <th className="px-6 py-4 font-medium">Status</th>
-                    <th className="px-6 py-4 font-medium">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.055]">
-                  {filteredTransactions.map((item) => (
-                    <tr key={item.id} className="transition-colors hover:bg-white/[0.025]">
-                      <td className="px-6 py-4 text-slate-200">
-                        {item.reference}
-                      </td>
-                      <td className="px-6 py-4">
-                        {item.asset ?? "Crypto not specified"}
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="font-medium text-white">
-                          {item.cryptoAmount !== null && item.asset
-                            ? `${formatCryptoAmount(item.cryptoAmount)} ${item.asset}`
-                            : "Crypto quantity unavailable"}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-400">
-                          {formatFiatAmount(item.fiatAmount, item.currency)}
-                        </p>
-                      </td>
-                      <td className="max-w-[280px] px-6 py-4 font-mono text-xs text-slate-400">
-                        {item.walletAddress ? (
-                          <span className="break-all" title={item.walletAddress}>
-                            {item.walletAddress}
-                          </span>
-                        ) : (
-                          <span className="text-slate-600">Not provided</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={item.status} />
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
-                        {item.date}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {withdrawalsLoading ? (
-                <p className="p-8 text-center text-sm text-slate-500">
-                  Loading your withdrawal records...
-                </p>
-              ) : withdrawalsError ? (
-                <p role="alert" className="p-8 text-center text-sm text-rose-300">
-                  {withdrawalsError}
-                </p>
-              ) : filteredTransactions.length === 0 ? (
-                <p className="p-8 text-center text-sm text-slate-500">
-                  {search ? "No matching withdrawal records found." : "You do not have any withdrawal records yet."}
-                </p>
-              ) : null}
-            </div>
-          </section>
+          <WithdrawalRecords records={transactions} loading={withdrawalsLoading} error={withdrawalsError} />
+          {withdrawalsError && <button type="button" onClick={() => setDashboardRetryCount((value) => value + 1)} className="mt-3 rounded-xl border border-cyan-200/20 px-4 py-2 text-xs text-cyan-100">Try loading again</button>}
           </div>
         )}
 
@@ -2015,7 +1735,7 @@ Custodial<span className="text-cyan-300">Support</span>
                 </div>
 
                 <span className="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.06] px-3 py-2 text-xs text-cyan-200">
-                  {tickets.length} total
+                  {ticketsLoading ? "Loading…" : `${tickets.length} total`}
                 </span>
               </div>
 
@@ -2210,117 +1930,11 @@ Custodial<span className="text-cyan-300">Support</span>
                 </form>
               )}
 
-              <div className={`mt-6 space-y-3 ${selectedTicketId ? "hidden" : ""}`}>
-                {tickets.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-white/10 p-6 text-center">
-                    <span className="text-2xl text-slate-500">▤</span>
-                    <p className="mt-3 text-sm font-medium text-slate-300">
-                      No support tickets yet
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Create a request to see it listed here.
-                    </p>
-                  </div>
-                ) : (
-                  tickets.map((ticket) => {
-                    const { summary, details } = splitTicketDescription(ticket.description);
-                    const isSelected = selectedTicketId === ticket.id;
-                    const hasMatchingCategory =
-                      ticket.category.trim().toLowerCase() ===
-                      ticket.subject.trim().toLowerCase();
-                    const shortTicketId = ticket.id.slice(0, 8);
-                    const shortTicketDate = ticket.createdAt.split(",")[0];
-
-                    return (
-                      <article
-                        key={ticket.id}
-                        className={`overflow-hidden rounded-2xl border transition duration-200 ${
-                          isSelected
-                            ? "border-cyan-300/25 bg-gradient-to-br from-cyan-300/[0.07] to-[#0a1727] shadow-lg shadow-cyan-950/10"
-                            : "border-white/[0.08] bg-gradient-to-br from-[#102235]/90 to-[#0a1727]/95 hover:border-cyan-200/20"
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.06] p-4 sm:p-5">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200">
-                              {ticket.category || "Support request"}
-                            </p>
-                            {!hasMatchingCategory && (
-                              <h3 className="mt-1.5 break-words text-base font-semibold text-white sm:text-lg">
-                                {ticket.subject}
-                              </h3>
-                            )}
-                          </div>
-                          <StatusBadge status={ticket.status} />
-                        </div>
-
-                        <div className="p-4 sm:p-5">
-                          <div className="flex min-w-0 items-center justify-between gap-3 text-[11px] text-slate-500">
-                            <span
-                              className="min-w-0 truncate font-mono"
-                              title={`Full ticket ID: ${ticket.id}`}
-                            >
-                              Ticket #{shortTicketId}
-                            </span>
-                            <time className="shrink-0 whitespace-nowrap">
-                              {shortTicketDate}
-                            </time>
-                          </div>
-
-                          {summary && (
-                            <div className="mt-4 rounded-xl border border-white/[0.07] bg-[#061321]/65 p-3.5 sm:p-4">
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                                Request details
-                              </p>
-                              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-300">
-                                {summary}
-                              </p>
-                            </div>
-                          )}
-
-                          {details.length > 0 && (
-                            <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-                              {details.map((detail) => (
-                                <div
-                                  key={`${detail.label}-${detail.value}`}
-                                  className="min-w-0 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3.5 py-3"
-                                >
-                                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                    {detail.label}
-                                  </p>
-                                  <p className="mt-1.5 break-all text-sm leading-5 text-slate-200">
-                                    {detail.value}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
-                            <span className="text-xs text-slate-500">
-                              {details.length > 0
-                                ? `${details.length} transaction ${details.length === 1 ? "detail" : "details"}`
-                                : "Support conversation"}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedTicketId(ticket.id)}
-                              className={`rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition ${
-                                isSelected
-                                  ? "border-cyan-200/25 bg-cyan-200/10 text-cyan-100"
-                                  : "border-cyan-300/20 bg-cyan-300/[0.06] text-cyan-200 hover:bg-cyan-300/[0.12]"
-                              }`}
-                            >
-                              {isSelected ? "Conversation open" : "View conversation"}
-                              <span className="ml-2" aria-hidden="true">→</span>
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })
-                )}
-              </div>
+              {!selectedTicketId && (
+                <div className="mt-5">
+                  {ticketsLoading ? <div role="status" className="space-y-3 py-2"><p className="text-xs text-slate-400">Loading your support tickets…</p>{[0, 1].map((item) => <div key={item} aria-hidden="true" className="h-32 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.025]" />)}</div> : ticketsError ? <div role="alert" className="rounded-xl border border-amber-200/15 bg-amber-200/[0.04] p-4 text-sm text-amber-100">{ticketsError}<button type="button" onClick={() => setDashboardRetryCount((value) => value + 1)} className="ml-3 underline underline-offset-4">Try again</button></div> : <ClientTicketCards tickets={tickets} unreadByTicket={unreadByTicket} onOpen={setSelectedTicketId} onPrefetch={prefetchClientTicketMessages} />}
+                </div>
+              )}
 
               {selectedTicketId && tickets.some((ticket) => ticket.id === selectedTicketId) && (
                 <section className={`rounded-xl border border-cyan-300/15 bg-[#071725]/70 p-4 sm:p-5 ${isTicketChatOpen ? "flex min-h-0 flex-1 flex-col overflow-hidden !rounded-none !border-0 !p-0" : "mt-6"}`}>
@@ -2331,7 +1945,7 @@ Custodial<span className="text-cyan-300">Support</span>
                     <div className="flex items-center gap-4">
                       <button
                         type="button"
-                        onClick={() => { setSelectedTicketId(null); setTicketMessages([]); }}
+                        onClick={() => setSelectedTicketId(null)}
                         aria-label="Close conversation"
                         className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-lg text-slate-300 transition hover:border-cyan-200/25 hover:bg-white/[.04]"
                       >
@@ -2340,14 +1954,24 @@ Custodial<span className="text-cyan-300">Support</span>
                     </div>
                   </div>
 
+                  {(ticketConversationError || ticketConversationReconnecting) && (
+                    <p role="status" className="shrink-0 px-4 py-2 text-xs text-amber-200 sm:px-6">
+                      {ticketConversationError || "Reconnecting to live messages…"}
+                      {ticketConversationError && <button type="button" onClick={() => void reloadClientTicketMessages()} className="ml-3 rounded-lg border border-amber-200/25 px-2.5 py-1 font-semibold text-amber-100 transition hover:bg-amber-200/10">Refresh conversation</button>}
+                    </p>
+                  )}
                   {loadingTicketMessages ? (
                     <p className={`py-6 text-sm text-slate-400 ${isTicketChatOpen ? "flex-1 px-4 sm:px-6" : ""}`}>Loading conversation...</p>
                   ) : ticketMessages.length === 0 ? (
                     <p className={`py-6 text-sm text-slate-400 ${isTicketChatOpen ? "flex-1 px-4 sm:px-6" : ""}`}>
-                      No replies yet. You can send a message to the support team below.
+                      {ticketConversationError ? "Your messages will appear here once the connection is restored." : "No replies yet. You can send a message to the support team below."}
                     </p>
                   ) : (
-                    <div className={`mt-4 space-y-3 overflow-y-auto overscroll-contain scrollbar-hide ${isTicketChatOpen ? "min-h-0 flex-1 px-4 sm:px-6" : "max-h-[420px]"}`}>
+                    <div ref={clientConversationScrollRef} onScroll={(event) => {
+                      const element = event.currentTarget;
+                      clientFollowMessagesRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+                      if (clientFollowMessagesRef.current && selectedTicketId && document.visibilityState === "visible" && !popupNotification && !ticketPhotoViewerUrl && !selectedNotification && !mobileMenuOpen) markTicketMessagesRead(selectedTicketId, ticketMessages);
+                    }} className={`mt-4 space-y-3 overflow-y-auto overscroll-contain scrollbar-hide ${isTicketChatOpen ? "min-h-0 flex-1 px-4 sm:px-6" : "max-h-[420px]"}`}>
                       {ticketMessages.map((message) => {
                         const isOwnMessage = message.sender_id === currentUserId;
                         const content = parseTicketMessage(message.message);
@@ -2419,7 +2043,10 @@ Custodial<span className="text-cyan-300">Support</span>
                                     <img
                                       src={photoUrl}
                                       alt={isOwnMessage ? "Your attached photo" : "Photo from support"}
-                                      loading="lazy"
+                                      loading={ticketPhotoPaths.slice(-2).includes(content.photoPath!) ? "eager" : "lazy"}
+                                      decoding="async"
+                                      onError={() => void retryTicketPhoto(content.photoPath!)}
+                                      onLoad={() => { const panel = clientConversationScrollRef.current; if (panel && clientFollowMessagesRef.current) panel.scrollTop = panel.scrollHeight; }}
                                       className="max-h-72 w-auto max-w-full rounded-xl object-contain"
                                     />
                                   </button>
@@ -2445,7 +2072,7 @@ Custodial<span className="text-cyan-300">Support</span>
                     </div>
                   )}
 
-                  <form onSubmit={handleClientTicketReply} className={`shrink-0 border-t border-white/[0.07] bg-gradient-to-b from-[#0b1c2b]/95 to-[#071421] px-4 pb-4 pt-4 sm:px-6 sm:pb-5 ${isTicketChatOpen ? "mt-0" : "mt-5"}`}>
+                  <form onSubmit={handleClientTicketReply} className={`shrink-0 border-t border-white/[0.07] bg-gradient-to-b from-[#0b1c2b]/95 to-[#071421] px-4 pb-4 pt-4 [padding-bottom:max(1rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-5 ${isTicketChatOpen ? "mt-0" : "mt-5"}`}>
                     <label htmlFor="ticket-reply" className="sr-only">Write a message to support</label>
                     <input
                       ref={ticketPhotoInputRef}
@@ -2563,6 +2190,8 @@ Custodial<span className="text-cyan-300">Support</span>
             )}
             {notifications.some((item) => !item.is_popup) ? (
               <div className="space-y-3">
+                {notificationsLoading && <p role="status" className="py-6 text-center text-sm text-slate-400">Loading your notifications…</p>}
+                {notificationsError && <p role="alert" className="py-3 text-sm text-amber-200">{notificationsError}<button type="button" onClick={() => setDashboardRetryCount((value) => value + 1)} className="ml-3 underline">Try again</button></p>}
                 {notifications.filter((item) => !item.is_popup).map((item) => {
                   const appearance = item.type === "success"
                     ? { label: "Success", icon: "✓", color: "emerald" }

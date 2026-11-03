@@ -484,19 +484,19 @@ export default function Home() {
 
           {/* Desktop navigation links */}
           <div className="hidden items-center gap-9 text-sm text-slate-400 md:flex">
-            <a
+            <Link
               href="/services"
               className="transition-colors duration-200 hover:text-cyan-300"
             >
               Services
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/about"
               className="transition-colors duration-200 hover:text-cyan-300"
             >
               About
-            </a>
+            </Link>
 
             <a
               href="#contact"
@@ -574,7 +574,7 @@ export default function Home() {
 
         </nav>
 
-        
+
       </header>
 
       {/* Keep the first page section below the fixed navigation. */}
@@ -1236,7 +1236,7 @@ export default function Home() {
               {/* Contact button */}
               <div className="mt-7">
                 <a
-                  href="mailto:Support@custodial.com"
+                  href="mailto:support@custodialmanagement.net"
                   className="button-primary group/button inline-flex min-h-12 items-center justify-center gap-3 rounded-xl border border-cyan-200/20 px-5 py-3 text-sm font-semibold sm:px-6 sm:text-base"
                 >
                   Contact Support
@@ -1268,7 +1268,7 @@ export default function Home() {
             Custodial<span className="text-cyan-300">Support</span>
           </a>
           <p>© 2026 Custodial Support. All rights reserved.</p>
-          <a href="#about" className="transition-colors hover:text-white">Support information</a>
+          <Link href="/about" className="transition-colors hover:text-white">Support information</Link>
         </div>
       </footer>
     </main>
