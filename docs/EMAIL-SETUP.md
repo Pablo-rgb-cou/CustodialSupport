@@ -45,7 +45,7 @@ After the user saved SMTP credentials, custom SMTP was verified enabled with `sm
 
 The approved OTP length **6** and expiry **600 seconds** were saved and verified by reopening the Email provider dialog. The branded Confirm Signup template and subject `Verify your CustodialSupport email` were installed and verified after reload. The preview contains only the new branded body, with `{{ .Token }}` for the actual code.
 
-The **Confirm email** switch remains **off** intentionally: the live website still displays its older signup screen, which does not accept verification codes. Deploy the prepared new signup screen, verify its code-entry step, then enable the already-approved confirmation requirement. This coordinates the production rollout without stranding new users. No Git push or deployment was performed in this step.
+The new signup and code-entry pages were deployed to Production from commit `987e218` after the user's push approval. Vercel reported READY and assigned the custom domain. The previously approved **Confirm email** requirement was then enabled and verified after reload. A controlled signup issued no session before verification, rejected an incorrect code, delivered the branded six-digit email to the official support inbox, and issued a session after successful verification. The password and code were kept out of the repository and output.
 
 The SMTP settings are available at [Supabase SMTP settings](https://supabase.com/dashboard/project/pohraykayzgvukykaaiu/auth/smtp):
 
@@ -60,7 +60,7 @@ The SMTP settings are available at [Supabase SMTP settings](https://supabase.com
 
 Password recovery and invitation templates were not changed. The approved Site URL correction to `https://www.custodialmanagement.net` is saved and verified after reload. Eight exact allowed redirects are saved: `/reset-password`, `/reset-password?returnTo=Settings`, `/dashboard` and `/verify-email`, each on `https://www.custodialmanagement.net` and `http://localhost:3000`. There are no new wildcard redirects.
 
-Signup-code delivery, expired-code rejection and the complete new-user verification flow remain to be tested after that coordinated rollout. The invitation test proves the saved SMTP transport and inbox delivery, rather than completion of the signup flow.
+Live signup-code delivery and verification are now tested. Incorrect-code rejection was also checked live; waiting for a code's full 10-minute expiry was not part of this live run. Invalid/expired-code UI behavior is covered by the focused automated tests, and the saved Auth expiry is 600 seconds.
 
 The ticket-alert worker needs the following **server-only** variables in Vercel project settings, and locally only if local delivery is wanted:
 
@@ -77,9 +77,9 @@ Existing public Supabase URL/publishable-key variables remain required. Do not a
 
 Vercel team authorization is now working. Metadata-only checks with decryption disabled confirmed the existing Supabase URL, publishable key and server secret. Production now also has `SUPPORT_SMTP_HOST`, `SUPPORT_SMTP_PORT` and `SUPPORT_SMTP_USER`. The user entered `SUPPORT_SMTP_PASSWORD` directly in Vercel; its presence and sensitive type were verified without reading its value. A dedicated cryptographically generated recovery token is stored in Supabase Vault and Vercel's sensitive Production `CRON_SECRET`, without printing it or writing it to the repository. Local `.env.local` remains unchanged; local SMTP delivery is not configured.
 
-Supabase Cron recovery is installed **inactive**, using migrations `20261103132447_support_email_recovery_scheduler.sql` and `20261103133444_support_email_private_scheduler_transport.sql`. It checks for due queue work every minute and calls the fixed HTTPS worker URL. The token is read from Vault at execution time and used only in an Authorization header. The final implementation uses synchronous `http`, so it never persists decrypted headers in `pg_net` request tables; the temporary unused `pg_net` extension was removed. The wake function is database-only and returns an HTTP status or a generic failure code, without logging raw errors. Browser and service roles cannot execute it or read Vault. No network call occurs with an empty queue.
+Supabase Cron recovery was installed inactive using migrations `20261103132447_support_email_recovery_scheduler.sql` and `20261103133444_support_email_private_scheduler_transport.sql`, then **activated after deployment and successful controlled delivery tests**. It checks for due queue work every minute and calls the fixed HTTPS worker URL. The token is read from Vault at execution time and used only in an Authorization header. The final implementation uses synchronous `http`, so it never persists decrypted headers in `pg_net` request tables; the temporary unused `pg_net` extension was removed. The wake function is database-only and returns an HTTP status or a generic failure code, without logging raw errors. Browser and service roles cannot execute it or read Vault. No network call occurs with an empty queue.
 
-The production email endpoint currently returns HTTP 404 because the new application has not been deployed. Keep the job inactive until the routes and Production environment are deployed and controlled contact/ticket delivery tests succeed. Then activate it with:
+The production worker is deployed and rejects unauthenticated GET requests with HTTP 401. A controlled authenticated client wakeup delivered a new-ticket alert; a second client reply was deliberately left queued, and the scheduled recovery run delivered it without a browser wakeup. Both queue events reached `sent` on their first attempt. The job is active. For future maintenance, activate it with:
 
 ```sql
 select cron.alter_job(jobid, active := true)
@@ -107,7 +107,7 @@ Official support contact links/defaults use the support mailbox above. Account-s
 - `npm run test:withdrawals`: render checks passed for 0, 1, 2, 5, 6 and 12 entries and modal details.
 - Database transaction test `tests/support-email-queue.sql`: passed on the connected project; all fixtures were rolled back. It checked enqueue exclusions, lease tokens, retry delay, final abandoned lease and browser isolation.
 - Database transaction test `tests/contact-rate-limit.sql`: passed on the connected project; fixtures rolled back. It checked limiter caps and browser-role isolation.
-- Read-only database test `tests/support-email-scheduler.sql`: passed. Vault and scheduler function access remain private, the job contains no credential, and the shared request queue is absent. The dedicated HTTP transport reached the production endpoint and returned 404, confirming it still needs deployment. The job remains inactive.
+- Read-only database test `tests/support-email-scheduler.sql`: passed. Vault and scheduler function access remain private, the job contains no credential, and the shared request queue is absent. The initial pre-deployment transport check returned 404; after deployment the authenticated worker and an actual scheduled delivery both succeeded. The recovery job is now active.
 - The earlier 17 application routes returned HTTP 200 with the branded title; literal internal route targets and favicon/image HTTP responses were checked. The new `/verify-email` page was also opened successfully in Chrome, showing registered-email and six-digit-code fields.
 - Admin chat visual checks passed at desktop 1536×730, mobile 390×844 and short mobile 375×480. The composer reaches the bottom and document scrolling is locked; X/navigation restores normal scrolling.
 - `git diff --check`: passed.
@@ -116,12 +116,16 @@ The local production build failure is now resolved with a supported bundler conf
 
 `npm run build` completed successfully: compilation, TypeScript, all 24 static generation tasks, page optimization and build traces. `npm start -- --hostname 127.0.0.1 --port 3200` started the built application in production mode. Nineteen page URLs returned HTTP 200 with the branded metadata, generated Tailwind CSS and icon assets loaded, and cross-origin email API requests were rejected. Chrome confirmed compiled gradient/spacing styles and no console errors on `/verify-email`. These checks establish build/runtime readiness; authenticated and live email delivery acceptance remains a separate rollout step.
 
-## Remaining coordinated rollout
+## Production rollout and live delivery results
 
-1. Obtain the user's requested approval for Git push, excluding `.env.local`, then verify a successful Vercel deployment of the new code and Production variables. If the build fails, resolve it before claiming the changes are live.
-2. Confirm `/verify-email` and the two email API routes exist on the deployed domain. Enable the previously approved Supabase **Confirm email** requirement only after the new signup page is live.
-3. Perform actual signup-code delivery/verification, public contact-form delivery, and client-ticket/reply email tests using controlled test data and the official support inbox. The earlier successful Auth invitation establishes SMTP transport only; it does not prove these new application paths.
-4. Activate the prepared recovery job after controlled delivery tests pass; verify a scheduled recovery run. Neither the confirmation requirement nor recovery scheduler is active yet.
+- Application commit `987e218bee1d8c8a2b8c00d4aac4869c6cbb48f1` was pushed to `main`. [Vercel Production deployment](https://vercel.com/pabs4pf/custodial-support/GfvvJVRuPBUQgmYNi6ttMVKuyr3R) reported READY and assigned `www.custodialmanagement.net`, the apex domain and the project aliases. `.env.local` was excluded and the working tree was clean after that push.
+- Live `/signup`, `/verify-email`, `/contact` and `/admin/tickets` returned HTTP 200; the code-entry page contained its verification fields. The contact API rejects GET with 405, and the scheduler endpoint rejects unauthenticated GET with 401.
+- The production contact-form POST returned HTTP 200 and its test email arrived from CustodialSupport at the official support inbox (mail UID 5).
+- Email confirmation is enabled. The controlled signup email arrived with the branded subject and six digits (UID 7); no session existed before confirmation, an incorrect code was rejected, and the correct code created the verified session. The first test attempt's input stream closed before code entry; that account was automatically removed before the successful retry.
+- A client-created support ticket delivered its alert through the deployed authenticated worker (UID 8). A subsequent public client reply was delivered by the recovery scheduler (UID 9). The scheduled run at `2026-11-03 15:02 UTC` succeeded; both events were marked sent with one attempt and no error code.
+- Temporary account deletion cascaded cleanup of the test profile/ticket/messages/outbox after an explicit ticket cleanup warning. A final independent database query confirmed **zero** remaining test accounts, profiles, tickets, messages and queue entries. The clearly labelled test emails remain in the support inbox as delivery evidence.
+
+The deployment and core live email paths are verified. Real-device browser/keyboard checks, waiting out an actual OTP expiry, code-reuse rejection and a controlled SMTP outage in a separate test environment remain optional acceptance checks below; they were not claimed as live-tested here.
 
 ## Live acceptance procedure after secure configuration
 
