@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
+import { brandedEmail, emailButton, escapeEmailHtml } from "./email-brand";
 
 const SUPPORT_MAILBOX = "support@custodialmanagement.net";
 const ADMIN_ORIGIN = "https://www.custodialmanagement.net";
@@ -53,7 +54,7 @@ export function createSupportEmailUserClient(accessToken: string) {
   });
 }
 
-function dispatchConfig() {
+export function supportMailConfig() {
   const { url } = supabasePublicConfig();
   const serviceKey = process.env.SUPABASE_SECRET_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   const host = process.env.SUPPORT_SMTP_HOST?.trim();
@@ -69,7 +70,7 @@ function dispatchConfig() {
 }
 
 // Store only allowlisted diagnostics, never SMTP error messages or credentials.
-function deliveryErrorCode(error: unknown): string {
+export function supportDeliveryErrorCode(error: unknown): string {
   const code = typeof error === "object" && error !== null && "code" in error ? error.code : null;
   if (code === "EAUTH") return "SMTP_AUTH";
   if (code === "ETIMEDOUT" || code === "ESOCKET") return "SMTP_TIMEOUT";
@@ -91,6 +92,7 @@ function alertMessage(job: OutboxJob) {
     envelope: { from: SUPPORT_MAILBOX, to: [SUPPORT_MAILBOX] },
     subject: `${subject} · ${job.ticket_id.slice(0, 8)}`,
     messageId: `<support-alert-${job.id}@custodialmanagement.net>`,
+    html: brandedEmail({ title: subject, eyebrow: "Support desk update", preview: event, content: `<p style="margin:0 0 20px;color:#b9cadb;">${event}</p><div style="padding:18px;border:1px solid #285565;border-radius:12px;background-color:#071725;"><p style="margin:0;color:#65edd0;">Ticket #${escapeEmailHtml(job.ticket_id.slice(0, 8))}</p><p style="margin:6px 0 0;color:#8ba4bb;font-size:13px;">Received ${escapeEmailHtml(receivedAt)}</p></div>${emailButton("Review conversation", link.toString())}<p style="margin:0;color:#8ba4bb;font-size:12px;">Sign in to your administrator account to read the conversation. Private message content is kept in your dashboard.</p>` }),
     text: `${event}\n\nTicket: ${job.ticket_id.slice(0, 8)}\nReceived: ${receivedAt}\n\nSign in to the administrator dashboard to review it:\n${link.toString()}\n\nThis alert does not include private conversation content.`,
     disableFileAccess: true,
     disableUrlAccess: true,
@@ -100,7 +102,7 @@ function alertMessage(job: OutboxJob) {
 /** The database owns enqueue, retries and leases; callers cannot construct jobs. */
 export async function dispatchSupportEmails(scope?: SupportEmailScope): Promise<SupportEmailDispatchSummary> {
   // This gate runs before claiming: absent SMTP secrets leave every job pending.
-  const config = dispatchConfig();
+  const config = supportMailConfig();
   if (scope && (!supportEmailTicketIdPattern.test(scope.clientId) || !supportEmailTicketIdPattern.test(scope.ticketId))) {
     throw new SupportEmailError("DATABASE");
   }
@@ -119,7 +121,44 @@ export async function dispatchSupportEmails(scope?: SupportEmailScope): Promise<
   const summary: SupportEmailDispatchSummary = { claimed: jobs.length, sent: 0, retrying: 0, failed: 0, unconfirmed: 0 };
   if (jobs.length === 0) return summary;
 
-  const transport = nodemailer.createTransport({
+  const transport = createSupportMailTransport(config);
+
+  try {
+    await Promise.all(jobs.map(async (job) => {
+      let delivered = false;
+      let errorCode: string | null = null;
+
+      try {
+        if (!supportEmailTicketIdPattern.test(job.id) || !supportEmailTicketIdPattern.test(job.ticket_id)
+          || !supportEmailTicketIdPattern.test(job.lease_token)
+          || !["ticket_created", "client_reply"].includes(job.event_kind)
+          || !Number.isFinite(new Date(job.created_at).getTime())) {
+          errorCode = "INVALID_JOB";
+        } else {
+          const result = await transport.sendMail(alertMessage(job));
+          delivered = result.accepted.some((recipient) => recipient.toLowerCase() === SUPPORT_MAILBOX);
+          if (!delivered) errorCode = "SMTP_REJECTED";
+        }
+      } catch (sendError) {
+        errorCode = supportDeliveryErrorCode(sendError);
+      }
+
+      try {
+        const { data: completed, error: completionError } = await service.rpc("finish_support_email_job", {
+          p_id: job.id, p_lease_token: job.lease_token, p_success: delivered, p_error_code: errorCode,
+        });
+        if (completionError || completed !== true) summary.unconfirmed += 1;
+        else if (delivered) summary.sent += 1;
+        else if (job.attempts >= MAX_ATTEMPTS) summary.failed += 1;
+        else summary.retrying += 1;
+      } catch { summary.unconfirmed += 1; }
+    }));
+  } finally { transport.close(); }
+  return summary;
+}
+
+export function createSupportMailTransport(config: ReturnType<typeof supportMailConfig>) {
+  return nodemailer.createTransport({
     host: config.host,
     port: config.port,
     secure: config.port === 465,
@@ -135,52 +174,4 @@ export async function dispatchSupportEmails(scope?: SupportEmailScope): Promise<
     disableUrlAccess: true,
   });
 
-  try {
-    await Promise.all(jobs.map(async (job) => {
-      let delivered = false;
-      let errorCode: string | null = null;
-
-      try {
-        if (!supportEmailTicketIdPattern.test(job.id) || !supportEmailTicketIdPattern.test(job.ticket_id)
-          || !supportEmailTicketIdPattern.test(job.lease_token)
-          || !["ticket_created", "client_reply"].includes(job.event_kind)
-          || !Number.isFinite(new Date(job.created_at).getTime())) {
-          errorCode = "INVALID_JOB";
-        } else {
-          const result = await transport.sendMail(alertMessage(job));
-          delivered = result.accepted.some((recipient) =>
-            recipient.toLowerCase() === SUPPORT_MAILBOX
-          );
-          if (!delivered) errorCode = "SMTP_REJECTED";
-        }
-      } catch (sendError) {
-        errorCode = deliveryErrorCode(sendError);
-      }
-
-      try {
-        const { data: completed, error: completionError } = await service.rpc("finish_support_email_job", {
-          p_id: job.id,
-          p_lease_token: job.lease_token,
-          p_success: delivered,
-          p_error_code: errorCode,
-        });
-        if (completionError || completed !== true) {
-          // Leave the lease for the recovery scheduler; never retry SMTP in this request.
-          summary.unconfirmed += 1;
-        } else if (delivered) {
-          summary.sent += 1;
-        } else if (job.attempts >= MAX_ATTEMPTS) {
-          summary.failed += 1;
-        } else {
-          summary.retrying += 1;
-        }
-      } catch {
-        summary.unconfirmed += 1;
-      }
-    }));
-  } finally {
-    transport.close();
-  }
-
-  return summary;
 }

@@ -138,6 +138,18 @@ The deployment and core live email paths are verified. Real-device browser/keybo
 
 ## Reference documentation
 
+The additional admin email composer and verified-registration queue are documented in [CUSTOMER-EMAILS.md](CUSTOMER-EMAILS.md). Their migration, production feature flag and deployment are pending approval; local implementation does not activate sending.
+
+### Email branding update — 3 November 2026
+
+All 13 Supabase authentication/security templates have been updated in the production dashboard to the navy/cyan/mint email frame. The local copies and route names are in `supabase/templates/manifest.json`. Notification enable switches, SMTP, authentication requirements, and redirect URLs were left unchanged. Code placeholders and confirmation URLs are preserved.
+
+`lib/server/email-brand.ts` supplies the same frame for support-ticket alerts and contact requests. These now include branded HTML alongside their plain-text alternatives; dynamic visitor fields are HTML-escaped. Those application changes require a repository push and Vercel deployment before they affect production.
+
+Email markup uses inline colors, table backgrounds, dark color-scheme metadata, gradient backgrounds, and supported dark-mode overrides. Individual mail clients can still transform colors, so test actual inbox rendering on the devices used by clients. Existing delivered messages are not restyled retroactively.
+
+Checks: `node tests/email-brand.test.cjs`, `npm run test:email`, `npm run test:contact`, TypeScript, and production build.
+
 - [Hostinger SMTP configuration](https://www.hostinger.com/support/1575756-how-to-get-email-account-configuration-details-for-hostinger-email/)
 - [Hostinger email DNS records](https://www.hostinger.com/support/8671319-set-up-a-domain-for-hostinger-email-manually/)
 - [Supabase custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp)

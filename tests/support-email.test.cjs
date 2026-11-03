@@ -59,11 +59,12 @@ function build() {
     }));
     const loadedModule = { exports: {} };
     vm.runInNewContext(compiled.outputText, { module: loadedModule, exports: loadedModule.exports, process: { env }, URL, Date, Buffer, Request, Response,
-      require: (name) => name in mocks ? mocks[name] : require(name),
+      require: (name) => name === "./email-brand" ? load("lib/server/email-brand.ts") : name in mocks ? mocks[name] : require(name),
     }, { filename: file });
     return loadedModule.exports;
   }
   const worker = load("lib/server/support-email.ts");
+  mocks["@/lib/server/customer-email"] = { dispatchCustomerEmails: async () => ({ enabled: false, claimed: 0, submitted: 0 }) };
   mocks["@/lib/server/support-email"] = worker;
   const route = load("app/api/support/email/route.ts");
   return { env, state, worker, route };

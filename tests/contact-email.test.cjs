@@ -33,7 +33,7 @@ function fixture() {
     const loadedModule = { exports: {} };
     vm.runInNewContext(compile(fs.readFileSync(path.join(root, file), 'utf8'), file), {
       module: loadedModule, exports: loadedModule.exports, process: { env }, URL, Headers, Request, Response, TextDecoder,
-      require: (name) => name in mocks ? mocks[name] : require(name),
+      require: (name) => name === './email-brand' ? load('lib/server/email-brand.ts') : name in mocks ? mocks[name] : require(name),
     });
     return loadedModule.exports;
   }
@@ -74,7 +74,12 @@ function clientHandler(fetchResponse) {
   assert.equal(mail.to, 'support@custodialmanagement.net');
   assert.deepEqual([...mail.envelope.to], ['support@custodialmanagement.net']);
   assert.equal(mail.replyTo.address, fields.email); assert(mail.text.includes(fields.message));
-  assert.equal(mail.attachments, undefined); assert.equal(mail.html, undefined);
+  assert.equal(mail.attachments, undefined); assert(mail.html.includes('bgcolor="#061321"'));
+  const unsafe = { ...fields, subject: '<b>Not markup</b>', message: '<img src=x onerror=alert(1)> This is a support question.' };
+  const escapedFixture = fixture();
+  assert.equal((await escapedFixture.route.POST(escapedFixture.request(unsafe))).status, 200);
+  assert(!escapedFixture.state.mails[0].html.includes('<img src=x'));
+  assert(escapedFixture.state.mails[0].html.includes('&lt;img'));
   assert.equal(mail.disableFileAccess, true); assert.equal(mail.disableUrlAccess, true);
   assert.equal(f.state.transports[0].secure, true); assert.equal(f.state.transports[0].requireTLS, true);
   assert.equal(f.state.transports[0].tls.rejectUnauthorized, true); assert.equal(f.state.transports[0].logger, false);

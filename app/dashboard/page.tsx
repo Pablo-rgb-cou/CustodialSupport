@@ -15,6 +15,7 @@ import { supabase } from "@/lib/supabase";
 import { useClientTicketConversation, type ClientTicketMessage } from "@/lib/use-client-ticket-conversation";
 import { useClientTicketTyping } from "@/lib/use-client-ticket-typing";
 import WithdrawalRecords, { type WithdrawalRecord as Transaction } from "@/app/components/WithdrawalRecords";
+import { mapClientWithdrawal } from "@/lib/map-client-withdrawal";
 
 type Ticket = {
 id: string;
@@ -73,11 +74,6 @@ function parseTicketMessage(value: string): ParsedTicketMessage {
   return { text: value };
 }
 
-function mapClientWithdrawal(row: Record<string, unknown>): Transaction {
-  const rawStatus = String(row.status ?? "pending").toLowerCase();
-  const status: Transaction["status"] = rawStatus === "completed" ? "Completed" : rawStatus === "processing" ? "Processing" : rawStatus === "failed" ? "Failed" : rawStatus === "cancelled" ? "Cancelled" : "Pending";
-  return { id: String(row.id), reference: typeof row.transaction_reference === "string" && row.transaction_reference.trim() ? row.transaction_reference.trim() : String(row.id), asset: row.crypto_asset ? String(row.crypto_asset).toUpperCase() : null, cryptoAmount: row.crypto_amount == null ? null : Number(row.crypto_amount), walletAddress: typeof row.wallet_address === "string" && row.wallet_address.trim() ? row.wallet_address.trim() : null, fiatAmount: Number(row.amount), currency: String(row.currency || "USD").toUpperCase(), status, date: row.created_at ? new Date(String(row.created_at)).toLocaleString() : "—", createdAtISO: String(row.created_at ?? "") };
-}
 function mapClientTicket(row: Record<string, unknown>): Ticket {
   return { id: String(row.id), subject: String(row.subject ?? "Support request"), category: String(row.category ?? "Support"), amount: "", asset: "", network: "", walletAddress: "", transactionHash: "", description: String(row.description ?? ""), status: clientTicketStatus(String(row.status ?? "open")), createdAt: row.created_at ? new Date(String(row.created_at)).toLocaleString() : "—", createdAtISO: String(row.created_at ?? "") };
 }
@@ -987,7 +983,7 @@ useEffect(() => {
       request((signal) => supabase.from("withdrawals").select("id, amount, currency, crypto_asset, crypto_amount, wallet_address, status, transaction_reference, created_at").eq("client_id", currentUserId).order("created_at", { ascending: false }).abortSignal(signal)).then(({ data, error }) => {
         if (!active) return;
         if (error) throw new Error(error.message);
-        setTransactions(merge("withdrawals", data ?? []).map(mapClientWithdrawal));
+        setTransactions(merge("withdrawals", data ?? []).map(mapClientWithdrawal).filter((item): item is Transaction => item !== null));
         loaded.withdrawals = true;
         setWithdrawalsError("");
       }).catch((error) => { if (active && !loaded.withdrawals) setWithdrawalsError("Your withdrawals could not be loaded. Please try again."); console.warn("Withdrawal refresh failed:", error); }).finally(() => { if (active) setWithdrawalsLoading(false); }),
@@ -1033,10 +1029,16 @@ useEffect(() => {
     .on("postgres_changes", { event: "*", schema: "public", table: "client_withdrawal_realtime", filter: `client_id=eq.${currentUserId}` }, (payload) => {
       if (!active) return;
       revision.withdrawals += 1;
-      remember("withdrawals", payload);
       const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as Record<string, unknown>;
-      if (payload.eventType === "DELETE") setTransactions((items) => items.filter((item) => item.id !== row.id));
-      else { const item = mapClientWithdrawal(row); setTransactions((items) => [item, ...items.filter((entry) => entry.id !== item.id)]); }
+      if (payload.eventType === "DELETE" && typeof row.id === "string") {
+        remember("withdrawals", payload);
+        setTransactions((items) => items.filter((item) => item.id !== row.id));
+        return;
+      }
+      const item = mapClientWithdrawal(row);
+      if (!item || row.client_id !== currentUserId) { void refresh(); return; }
+      remember("withdrawals", payload);
+      setTransactions((items) => [item, ...items.filter((entry) => entry.id !== item.id)].sort((a, b) => b.createdAtISO.localeCompare(a.createdAtISO)));
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets", filter: `client_id=eq.${currentUserId}` }, (payload) => {
       if (!active) return;

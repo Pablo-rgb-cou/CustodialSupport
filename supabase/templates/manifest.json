@@ -1,0 +1,54 @@
+[
+  {
+    "file": "confirm-signup.html",
+    "slug": "confirm-sign-up"
+  },
+  {
+    "file": "reset-password.html",
+    "slug": "reset-password"
+  },
+  {
+    "file": "invite-user.html",
+    "slug": "invite-user"
+  },
+  {
+    "file": "magic-link.html",
+    "slug": "magic-link-or-otp"
+  },
+  {
+    "file": "change-email.html",
+    "slug": "change-email-address"
+  },
+  {
+    "file": "reauthentication.html",
+    "slug": "reauthentication"
+  },
+  {
+    "file": "password-changed.html",
+    "slug": "password-changed"
+  },
+  {
+    "file": "email-address-changed.html",
+    "slug": "email-address-changed"
+  },
+  {
+    "file": "phone-number-changed.html",
+    "slug": "phone-number-changed"
+  },
+  {
+    "file": "sign-in-method-linked.html",
+    "slug": "sign-in-method-linked"
+  },
+  {
+    "file": "sign-in-method-removed.html",
+    "slug": "sign-in-method-removed"
+  },
+  {
+    "file": "mfa-method-added.html",
+    "slug": "mfa-method-added"
+  },
+  {
+    "file": "mfa-method-removed.html",
+    "slug": "mfa-method-removed"
+  }
+]

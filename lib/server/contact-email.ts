@@ -4,6 +4,7 @@ import { createHmac, randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
+import { brandedEmail, escapeEmailHtml } from "./email-brand";
 
 const SUPPORT_MAILBOX = "support@custodialmanagement.net";
 const categories = new Set(["General inquiry", "Account assistance", "Transaction support", "Technical issue", "Other"]);
@@ -111,6 +112,7 @@ export async function sendContactEmail(request: ContactRequest, headers: Headers
       replyTo: { name: request.fullName, address: request.email },
       subject: `Contact request: ${request.subject}`,
       messageId: `<contact-${reference}@custodialmanagement.net>`,
+      html: brandedEmail({ title: "New contact request", eyebrow: "Website enquiry", preview: "A visitor submitted the CustodialSupport contact form.", content: `<p style="margin:0 0 20px;color:#b9cadb;">A visitor sent a message through your website.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="color:#b9cadb;font-size:13px;line-height:23px;">${[["Name", request.fullName], ["Reply email", request.email], ["Category", request.category], ["Subject", request.subject]].map(([label, value]) => `<tr><td style="padding:8px 12px 8px 0;border-bottom:1px solid #214052;color:#8ba4bb;vertical-align:top;">${label}</td><td style="padding:8px 0;border-bottom:1px solid #214052;word-break:break-word;">${escapeEmailHtml(value)}</td></tr>`).join("")}</table><div style="margin:24px 0;padding:18px;border:1px solid #285565;border-radius:12px;background-color:#071725;color:#e8f1fa;white-space:pre-wrap;word-break:break-word;">${escapeEmailHtml(request.message)}</div><p style="margin:0;color:#8ba4bb;font-size:12px;">Reference: ${escapeEmailHtml(reference)}<br>Reply to this email to respond to the sender.</p>` }),
       text: `A visitor submitted the CustodialSupport contact form.\n\nReference: ${reference}\nName: ${request.fullName}\nReply email: ${request.email}\nCategory: ${request.category}\nSubject: ${request.subject}\n\n${request.message}`,
       disableFileAccess: true,
       disableUrlAccess: true,

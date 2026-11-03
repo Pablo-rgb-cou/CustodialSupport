@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:auth": "node --test tests/auth-flows.test.cjs",
     "test:email": "node tests/support-email.test.cjs",
+    "test:customer-emails": "node tests/customer-email.test.cjs",
     "test:contact": "node tests/contact-email.test.cjs",
     "test:withdrawals": "node tests/withdrawal-records.test.cjs"
   },

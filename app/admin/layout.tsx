@@ -15,6 +15,7 @@ const navItems = [
   { label: "Withdrawals", href: "/admin/withdrawals", icon: "withdrawals" },
   { label: "Clients", href: "/admin/clients", icon: "clients" },
   { label: "Notifications", href: "/admin/notifications", icon: "notifications" },
+  { label: "Emails", href: "/admin/emails", icon: "emails" },
   { label: "Activity log", href: "/admin/activity", icon: "activity" },
   { label: "Settings", href: "/admin/settings", icon: "settings" },
 ];
@@ -27,10 +28,12 @@ const adminNavigationIconTileColors: Record<string, string> = {
   settings: "border-violet-300/20 bg-violet-300/[0.09] text-violet-200",
   clients: "border-fuchsia-300/20 bg-fuchsia-300/[0.08] text-fuchsia-200",
   activity: "border-indigo-300/20 bg-indigo-300/[0.08] text-indigo-200",
+  emails: "border-teal-300/20 bg-teal-300/[0.09] text-teal-200",
 };
 
 function AdminNavigationIcon({ icon }: { icon: string }) {
   const common = { viewBox: "0 0 24 24", fill: "currentColor", className: "h-5 w-5", "aria-hidden": true as const };
+  if (icon === "emails") return <svg {...common}><path d="M3 4.5h18a1.5 1.5 0 0 1 1.5 1.5v.5L12 13 1.5 6.5V6A1.5 1.5 0 0 1 3 4.5Zm-1.5 4L12 15l10.5-6.5V18a1.5 1.5 0 0 1-1.5 1.5H3A1.5 1.5 0 0 1 1.5 18V8.5Z" /></svg>;
 
   if (icon === "home") {
     return <svg {...common}><path d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.06l8.69-8.689Z" /><path d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z" /></svg>;

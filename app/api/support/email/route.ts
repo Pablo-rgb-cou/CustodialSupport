@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { dispatchCustomerEmails } from "@/lib/server/customer-email";
 
 import {
   createSupportEmailUserClient,
@@ -47,7 +48,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    return json(await dispatchSupportEmails());
+    // Keep the established ticket worker independent from the new queue.
+    const [support, customer] = await Promise.allSettled([dispatchSupportEmails(), dispatchCustomerEmails()]);
+    if (support.status === "rejected") return dispatchError(support.reason);
+    return json({ ...support.value, customerEmails: customer.status === "fulfilled" ? customer.value : { error: "CUSTOMER_EMAIL_WORKER_UNAVAILABLE" } });
   } catch (error) {
     return dispatchError(error);
   }
