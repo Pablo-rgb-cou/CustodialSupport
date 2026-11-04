@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { CopyValue } from "@/app/components/WithdrawalRecords";
+import dynamic from "next/dynamic";
+
+const WithdrawalFeeDemo = dynamic(() => import("@/app/components/WithdrawalFeeDemo"));
 
 type WithdrawalStatus =
   | "pending"
@@ -87,7 +91,6 @@ const [cryptoAmount, setCryptoAmount] = useState("");
 const [walletAddress, setWalletAddress] = useState("");
   const [status, setStatus] =
     useState<WithdrawalStatus>("pending");
-  const [reference, setReference] = useState("");
   const [adminNote, setAdminNote] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -312,7 +315,8 @@ if (
           crypto_amount: numericCryptoAmount,
           wallet_address: walletAddress.trim() || null,
           status,
-          transaction_reference: reference.trim() || null,
+          // An internal reference identifies the record; it is not a blockchain hash.
+          transaction_reference: `WR-${crypto.randomUUID()}`,
           admin_note: adminNote.trim() || null,
         });
 
@@ -333,7 +337,6 @@ if (
       setCryptoAmount("");
       setWalletAddress("");
       setStatus("pending");
-      setReference("");
       setAdminNote("");
       setShowForm(false);
 
@@ -462,6 +465,8 @@ if (
           </button>
         </div>
       </section>
+
+      <WithdrawalFeeDemo />
 
       {notice && (
         <div
@@ -616,16 +621,7 @@ if (
               </select>
             </label>
 
-            <label className="space-y-2 text-sm text-slate-300 sm:col-span-2">
-              <span>Transaction reference (optional)</span>
-              <input
-                value={reference}
-                onChange={(event) => setReference(event.target.value)}
-                maxLength={200}
-                className="w-full rounded-xl border border-white/10 bg-[#04101d] px-3.5 py-3 text-white outline-none placeholder:text-slate-600 focus:border-cyan-300/40"
-                placeholder="Enter a genuine payment or transaction reference"
-              />
-            </label>
+            <p className="rounded-xl border border-cyan-200/10 bg-cyan-200/[0.035] p-3 text-xs leading-5 text-slate-400 sm:col-span-2">A unique record reference is generated automatically when saved.</p>
 
             <label className="space-y-2 text-sm text-slate-300 sm:col-span-2">
               <span>Administrative note (optional)</span>
@@ -774,7 +770,7 @@ if (
               <thead className="bg-white/[0.025] text-xs uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-5 py-4 font-medium">Client</th>
-                  <th className="px-5 py-4 font-medium">Withdrawal ID</th>
+                  <th className="px-5 py-4 font-medium">Record reference</th>
                   <th className="px-5 py-4 font-medium">Amount</th>
                   <th className="px-5 py-4 font-medium">Wallet address</th>
                   <th className="px-5 py-4 font-medium">Date created</th>
@@ -799,7 +795,7 @@ if (
                     </td>
 
                     <td className="px-5 py-4 font-mono text-xs text-slate-400">
-                      {item.id}
+                      {item.transaction_reference ? <CopyValue value={item.transaction_reference} label="Record reference" /> : <span>Not provided</span>}
                     </td>
 
                     <td className="px-5 py-4">
@@ -822,9 +818,7 @@ if (
 
                     <td className="max-w-[260px] px-5 py-4 font-mono text-xs text-slate-400">
                       {item.wallet_address ? (
-                        <span className="break-all" title={item.wallet_address}>
-                          {item.wallet_address}
-                        </span>
+                        <CopyValue value={item.wallet_address} label="Wallet address" />
                       ) : (
                         <span className="text-slate-600">Not provided</span>
                       )}

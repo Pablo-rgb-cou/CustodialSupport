@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import HeroRotatingWord from "@/app/components/HeroRotatingWord";
 import { LandingSupportFinder, LandingSupportJourney, LandingSupportPreparation, LandingSupportFAQ } from "@/app/components/LandingSupportSections";
 
 const services = [
@@ -677,7 +678,7 @@ export default function Home() {
           </div>
 
           <h1 className="max-w-2xl text-[clamp(2.1rem,8.8vw,3.5rem)] font-bold leading-[1.06] tracking-[-0.055em] sm:text-6xl lg:text-[68px] xl:text-[76px]">
-            Your next step,
+            <HeroRotatingWord />
             <span className="text-gradient mt-1 block">made clearer.</span>
           </h1>
 

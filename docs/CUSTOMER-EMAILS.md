@@ -1,6 +1,6 @@
 # Customer emails and verified-registration alerts
 
-Implemented locally on 3 November 2026. **Not deployed; the production migration and activation require approval.** No real client emails were sent during implementation.
+Implemented on 3 November 2026. On 4 November, the user approved production activation and deployment. The customer-email migration was applied and `CUSTOMER_EMAILS_ENABLED=true` was configured in Vercel Production. Browser access to the new tables and queue functions was checked and remains denied. No test emails were sent to real clients; final inbox acceptance testing remains outstanding.
 
 ## Features
 
@@ -39,7 +39,7 @@ Modified:
 
 Earlier withdrawal and email-branding changes already present in the working tree are separate work. This feature does not change the six-digit confirmation flow, confirmation template, authentication settings, RLS on existing application tables, contact submission behavior, support-ticket templates, withdrawals or chat.
 
-## Required migration — pending approval
+## Required migration — applied with approval on 4 November 2026
 
 Apply **only** `20261103192437_customer_email_management.sql` after checking its dependencies are already installed. Do not blindly run all local migrations against production.
 

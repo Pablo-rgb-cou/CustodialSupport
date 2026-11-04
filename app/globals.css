@@ -294,6 +294,34 @@ button:focus-visible {
 
 /* 1. Gentle floating illustration */
 
+/* Reserve the widest word so the hero stays still throughout each rotation. */
+.hero-word-stage { display: inline-grid; min-width: 0; }
+.hero-word-visual { display: inline-grid; perspective: 750px; overflow: hidden; padding-block: .12em; margin-block: -.12em; }
+.hero-rotating-word { grid-area: 1 / 1; white-space: nowrap; visibility: hidden; }
+.hero-rotating-letter { display: inline-block; transform-origin: 50% 50% -.3em; backface-visibility: hidden; }
+.hero-rotating-word.is-current { visibility: visible; }
+.hero-rotating-word.is-current .hero-rotating-letter:not(.is-initial) {
+  animation: heroLetterTurnIn 1500ms cubic-bezier(.65,0,.35,1) var(--letter-delay) both;
+}
+.hero-rotating-word.is-previous { visibility: visible; }
+.hero-rotating-word.is-previous .hero-rotating-letter {
+  animation: heroLetterTurnOut 1500ms cubic-bezier(.65,0,.35,1) var(--letter-delay) both;
+}
+@keyframes heroLetterTurnIn {
+  from { transform: translateY(var(--letter-travel)) rotateX(var(--letter-turn)); visibility: hidden; }
+  1% { visibility: visible; }
+  to { transform: translateY(0) rotateX(0); visibility: visible; }
+}
+@keyframes heroLetterTurnOut {
+  from { transform: translateY(0) rotateX(0); visibility: visible; }
+  99% { visibility: visible; }
+  to { transform: translateY(calc(-1 * var(--letter-travel))) rotateX(calc(-1 * var(--letter-turn))); visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-rotating-word.is-previous { visibility: hidden; }
+  .hero-rotating-letter { animation: none !important; transform: none !important; }
+}
+
 @keyframes heroFloat {
   0%,
   100% {
