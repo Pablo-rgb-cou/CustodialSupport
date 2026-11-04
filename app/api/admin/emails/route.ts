@@ -10,16 +10,16 @@ function failure(error: unknown) { return error instanceof AdminEmailError ? jso
 
 export async function GET(request: Request) {
   try {
-    const { service } = await authorizeEmailAdmin(request);
+    const { service, userScoped } = await authorizeEmailAdmin(request);
     const url = new URL(request.url);
     const page = Math.min(10000, Math.max(0, Number.parseInt(url.searchParams.get("page") || "0", 10) || 0));
     const view = url.searchParams.get("view");
     if (view === "clients") {
       const search = (url.searchParams.get("q") || "").trim().slice(0, 100).replace(/[%_\\]/g, "");
-      let query = service.from("profiles").select("id,full_name", { count: "exact" }).eq("role", "client").order("created_at", { ascending: false }).order("id").range(page * 25, page * 25 + 24);
+      let query = userScoped.from("profiles").select("id,full_name", { count: "exact" }).eq("role", "client").order("created_at", { ascending: false }).order("id").range(page * 25, page * 25 + 24);
       if (search) query = query.ilike("full_name", `%${search}%`);
       const { data, error, count } = await query;
-      if (error) throw error;
+      if (error) throw new AdminEmailError(503, "Could not load the client list. Please retry.");
       const clients = await Promise.all((data || []).map(async (profile) => {
         const { data: auth, error: authError } = await service.auth.admin.getUserById(profile.id);
         if (authError) throw new Error("CLIENT_LOOKUP");
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { actorId, service } = await authorizeEmailAdmin(request);
+    const { actorId, service, userScoped } = await authorizeEmailAdmin(request);
     const body = await readEmailJson(request);
     if (body.action === "save-template") {
       if (typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 80 || /[\r\n\x00]/.test(body.name)) throw new AdminEmailError(400, "Enter a template name of 1–80 characters.");
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     let draft;
     try { draft = parseCustomerEmailDraft(body); } catch (error) { throw new AdminEmailError(400, (error as Error).message); }
     if (draft.clientId) {
-      const { data: profile, error: profileError } = await service.from("profiles").select("full_name,role").eq("id", draft.clientId).maybeSingle();
+      const { data: profile, error: profileError } = await userScoped.from("profiles").select("full_name,role").eq("id", draft.clientId).maybeSingle();
       const { data: auth, error: authError } = await service.auth.admin.getUserById(draft.clientId);
       if (profileError || authError || profile?.role !== "client" || !auth.user?.email) throw new AdminEmailError(400, "The client account is unavailable.");
       // Resolve the address afresh; never trust the dropdown's cached address.

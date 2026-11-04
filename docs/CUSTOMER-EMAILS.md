@@ -2,6 +2,8 @@
 
 Implemented on 3 November 2026. On 4 November, the user approved production activation and deployment. The customer-email migration was applied and `CUSTOMER_EMAILS_ENABLED=true` was configured in Vercel Production. Browser access to the new tables and queue functions was checked and remains denied. No test emails were sent to real clients; final inbox acceptance testing remains outstanding.
 
+Profile-access correction (4 November): client listing and selected-recipient profile checks use the verified administrator's user-scoped client and the existing `profiles_admin_select_all` RLS policy, matching the Clients page. This project intentionally grants no profile SELECT permission to `service_role`; the service client remains limited to Auth email lookup and the email tables/RPCs after admin authorization. No production grants or RLS policies were changed for this correction. Regression tests reject any service-client profile read and exercise client listing, selected-client preview and enqueue with that restriction in place.
+
 ## Features
 
 - Admin sidebar → Emails (`/admin/emails`), using the existing dashboard layout and colored icon tile.

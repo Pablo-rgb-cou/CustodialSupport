@@ -24,7 +24,9 @@ export async function authorizeEmailAdmin(request: Request) {
   const { data: profile, error: roleError } = await verifier.from("profiles").select("role").eq("id", user.id).maybeSingle();
   if (roleError) throw new AdminEmailError(503, "Could not verify administrator access.");
   if (profile?.role !== "admin") throw new AdminEmailError(403, "Administrator access is required.");
-  return { actorId: user.id, service: emailServiceClient() };
+  // Profile reads must use the existing administrator RLS policy. The service
+  // role intentionally has no SELECT grant on profiles in this project.
+  return { actorId: user.id, userScoped: verifier, service: emailServiceClient() };
 }
 
 export async function readEmailJson(request: Request): Promise<Record<string, unknown>> {

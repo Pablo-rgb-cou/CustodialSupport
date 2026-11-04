@@ -9,20 +9,32 @@ const lease = "abcdef12-1234-4234-8234-123456789abc";
 const draft = { recipientName: "Alex <img src=x>", recipientEmail: "alex@example.test", clientId: null, subject: "Account <update>", message: "Hello <script>alert(1)</script>\nSecond line" };
 function fixture() {
   const env = { CUSTOMER_EMAILS_ENABLED: "true", NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co", SUPABASE_SECRET_KEY: "test-only" };
-  const state = { authenticated: true, role: "admin", jobs: [], sent: [], calls: [], sendsError: null, dbError: null, finishError: false, createdServices: 0, clientEmail: "alex@example.test", rows: [] };
+  const state = { authenticated: true, role: "admin", jobs: [], sent: [], calls: [], sendsError: null, dbError: null, profileError: null, finishError: false, createdServices: 0, clientEmail: "alex@example.test", rows: [], profileReads: [] };
   const query = () => {
     const result = { data: state.rows, error: state.dbError, count: state.rows.length };
     const q = { then: (ok, bad) => Promise.resolve(result).then(ok, bad), maybeSingle: async () => ({ data: { role: "client", full_name: "Alex" }, error: state.dbError }), single: async () => ({ data: { id }, error: state.dbError }) };
     for (const method of ["select", "eq", "order", "range", "limit", "ilike", "insert", "delete"]) q[method] = () => q;
     return q;
   };
-  const service = { from: query, auth: { admin: { getUserById: async () => ({ data: { user: { email: state.clientEmail, email_confirmed_at: "2026-11-03T12:00:00Z" } }, error: null }) } }, rpc: async (name, args) => {
+  const service = { from: (table) => { assert.notEqual(table, "profiles", "Service role has no profile SELECT grant; use administrator RLS"); return query(); }, auth: { admin: { getUserById: async () => ({ data: { user: { email: state.clientEmail, email_confirmed_at: "2026-11-03T12:00:00Z" } }, error: null }) } }, rpc: async (name, args) => {
     state.calls.push({ name, args });
     if (name === "claim_customer_email_jobs") return { data: state.jobs, error: state.dbError };
     if (name === "finish_customer_email_job") return { data: !state.finishError, error: state.finishError };
     return { data: id, error: state.dbError };
   } };
-  const user = { auth: { getUser: async () => ({ data: { user: state.authenticated ? { id } : null }, error: state.authenticated ? null : {} }) }, from: () => { const q = { select: () => q, eq: () => q, maybeSingle: async () => ({ data: { role: state.role }, error: null }) }; return q; } };
+  const user = { auth: { getUser: async () => ({ data: { user: state.authenticated ? { id } : null }, error: state.authenticated ? null : {} }) }, from: (table) => {
+    assert.equal(table, "profiles");
+    let columns;
+    const q = {
+      select: (value) => { columns = value; state.profileReads.push(value); return q; },
+      maybeSingle: async () => columns === "role"
+        ? { data: { role: state.role }, error: null }
+        : { data: { role: "client", full_name: "Alex" }, error: state.profileError },
+      then: (ok, bad) => Promise.resolve({ data: state.rows, error: state.profileError, count: state.rows.length }).then(ok, bad),
+    };
+    for (const method of ["eq", "order", "range", "ilike"]) q[method] = () => q;
+    return q;
+  } };
   const support = { createSupportEmailUserClient: () => user, supportMailConfig: () => ({}), supportDeliveryErrorCode: (error) => ({ EAUTH: "SMTP_AUTH", ECONNECTION: "SMTP_CONNECT", ETIMEDOUT: "SMTP_TIMEOUT" })[error?.code] || "SMTP_SEND", createSupportMailTransport: () => ({ close: () => {}, sendMail: async (mail) => { state.sent.push(mail); if (state.sendsError) throw state.sendsError; return { accepted: [mail.to.address] }; } }) };
   const cache = {};
   function load(file) {
@@ -56,6 +68,19 @@ const request = (body, headers = {}) => new Request("https://app.test/api/admin/
   f = fixture(); f.state.authenticated = false;
   assert.equal((await f.route.POST(request({ action: "preview", ...draft }))).status, 401);
   f = fixture();
+  f.state.rows = [{ id, full_name: "Alex" }];
+  let clientResponse = await f.route.GET(new Request("https://app.test/api/admin/emails?view=clients&q=Alex", { headers: { Authorization: "Bearer test-session" } }));
+  assert.equal(clientResponse.status, 200);
+  assert.deepEqual((await clientResponse.json()).clients, [{ id, fullName: "Alex", email: "alex@example.test", verified: true }]);
+  assert(f.state.profileReads.includes("id,full_name"), "Client listing uses verified administrator RLS");
+  f.state.profileError = { code: "42501", message: "private database diagnostic" };
+  clientResponse = await f.route.GET(new Request("https://app.test/api/admin/emails?view=clients", { headers: { Authorization: "Bearer test-session" } }));
+  assert.equal(clientResponse.status, 503);
+  assert(!(await clientResponse.text()).includes("private database diagnostic"));
+  f = fixture();
+  assert.equal((await f.route.POST(request({ action: "send", ...draft, clientId: id, requestId: id }))).status, 202);
+  assert.equal(f.state.calls[0].args.p_client_id, id, "Registered-client sends retain the verified client ID");
+  f = fixture();
   assert.equal((await f.route.POST(request({ action: "preview", ...draft }, { Origin: "https://evil.test" }))).status, 403);
   for (const patch of [{ recipientEmail: "a@example.test,b@example.test" }, { recipientEmail: "a@example.test\r\nBcc:b@example.test" }, { subject: "Subject\nBcc:test" }, { message: "x".repeat(12001) }, { clientId: "wrong" }]) assert.throws(() => f.content.parseCustomerEmailDraft({ ...draft, ...patch }));
   let response = await f.route.POST(request({ action: "preview", ...draft }));
@@ -65,6 +90,8 @@ const request = (body, headers = {}) => new Request("https://app.test/api/admin/
   assert(preview.html.includes("Alex &lt;img")); assert(preview.html.includes("#061321"));
   assert.equal(f.state.sent.length, 0); assert.equal(f.state.calls.length, 0, "Preview cannot queue or send");
   assert.equal((await f.route.POST(request({ action: "preview", ...draft, clientId: id, recipientEmail: "stale@example.test" }))).status, 409);
+  assert.equal((await f.route.POST(request({ action: "preview", ...draft, clientId: id }))).status, 200);
+  assert(f.state.profileReads.includes("full_name,role"), "Client preview/send validation uses administrator RLS");
   response = await f.route.POST(request({ action: "send", ...draft, requestId: id }));
   assert.equal(response.status, 202); assert.equal(f.state.calls[0].args.p_actor, id); assert.equal(f.state.calls[0].args.p_request_id, id); assert.equal(f.state.sent.length, 0, "Send only enqueues durable work");
   f.state.dbError = { message: "EMAIL_RATE_LIMIT" };
@@ -90,5 +117,5 @@ const request = (body, headers = {}) => new Request("https://app.test/api/admin/
   assert(f.state.sent[0].html.includes("Verified Client")); assert(f.state.sent[0].html.includes(id)); assert(!JSON.stringify(f.state.sent).includes("DO_NOT_INCLUDE"));
   f.state.jobs[0].recipient_email = "wrong@example.test"; summary = await f.worker.dispatchCustomerEmails(); assert.equal(summary.failed, 1); assert.equal(f.state.sent.length, 1);
   response = await fixture().route.POST(request({ action: "preview", ...draft, message: "x".repeat(25000) })); assert.equal(response.status, 413);
-  console.log("PASS: admin auth/authorization, origin checks, input validation/escaping, preview isolation, queue-only sends, client email resolution, rate-limit response, templates, disabled mode, leases, safe retries/uncertain outcomes, registration allowlist; no real SMTP calls.");
+  console.log("PASS: admin auth/authorization, origin checks, client list and recipient checks through administrator RLS with no service profile grants, input validation/escaping, preview isolation, queue-only sends, client email resolution, rate-limit response, templates, disabled mode, leases, safe retries/uncertain outcomes, registration allowlist; no real SMTP calls.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });
