@@ -1,9 +1,11 @@
 import { AdminEmailError, authorizeEmailAdmin, readEmailJson } from "@/lib/server/admin-email-auth";
 import { customerEmailUuid, parseCustomerEmailDraft } from "@/lib/customer-email-content";
-import { customerEmailHtml } from "@/lib/server/customer-email";
+import { customerEmailHtml, dispatchCustomerEmails } from "@/lib/server/customer-email";
+import { after } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function json(body: object, status = 200) { return Response.json(body, { status, headers: { "Cache-Control": "no-store" } }); }
 function failure(error: unknown) { return error instanceof AdminEmailError ? json({ error: error.message }, error.status) : json({ error: "Email management is unavailable. Check the approved migration and server configuration." }, 503); }
@@ -77,6 +79,12 @@ export async function POST(request: Request) {
     if (error?.message?.includes("EMAIL_RATE_LIMIT")) throw new AdminEmailError(429, "Sending limit reached. Please wait before sending another email.");
     if (error?.code === "22023") throw new AdminEmailError(409, "This sending request was already used for different content. Review the draft again.");
     if (error) throw error;
+    // Persist first, then attempt submission without blocking the receipt.
+    // The leased worker and scheduler retain retry/deduplication rules.
+    after(async () => {
+      try { await dispatchCustomerEmails(); }
+      catch { /* The durable job remains available to scheduled recovery. */ }
+    });
     return json({ id, status: "queued" }, 202);
   } catch (error) { return failure(error); }
 }

@@ -9,7 +9,7 @@ const lease = "abcdef12-1234-4234-8234-123456789abc";
 const draft = { recipientName: "Alex <img src=x>", recipientEmail: "alex@example.test", clientId: null, subject: "Account <update>", message: "Hello <script>alert(1)</script>\nSecond line" };
 function fixture() {
   const env = { CUSTOMER_EMAILS_ENABLED: "true", NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co", SUPABASE_SECRET_KEY: "test-only" };
-  const state = { authenticated: true, role: "admin", jobs: [], sent: [], calls: [], sendsError: null, dbError: null, profileError: null, finishError: false, createdServices: 0, clientEmail: "alex@example.test", rows: [], profileReads: [] };
+  const state = { authenticated: true, role: "admin", jobs: [], sent: [], calls: [], sendsError: null, dbError: null, profileError: null, finishError: false, createdServices: 0, clientEmail: "alex@example.test", rows: [], profileReads: [], afterTasks: [] };
   const query = () => {
     const result = { data: state.rows, error: state.dbError, count: state.rows.length };
     const q = { then: (ok, bad) => Promise.resolve(result).then(ok, bad), maybeSingle: async () => ({ data: { role: "client", full_name: "Alex" }, error: state.dbError }), single: async () => ({ data: { id }, error: state.dbError }) };
@@ -43,6 +43,7 @@ function fixture() {
     const compiled = ts.transpileModule(fs.readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
     const resolve = (name) => {
       if (name === "server-only") return {};
+      if (name === "next/server") return { after: (task) => state.afterTasks.push(task) };
       if (name === "@supabase/supabase-js") return { createClient: () => { state.createdServices++; return service; } };
       if (name === "./support-email") return support;
       if (name === "./email-brand") return load("lib/server/email-brand.ts");
@@ -61,10 +62,12 @@ const request = (body, headers = {}) => new Request("https://app.test/api/admin/
   let f = fixture();
   assert.equal((await f.route.GET(new Request("https://app.test/api/admin/emails"))).status, 401);
   assert.equal(f.state.createdServices, 0, "No privileged client before verified admin auth");
+  assert.equal(f.state.afterTasks.length, 0);
   f.state.role = "client";
   assert.equal((await f.route.POST(request({ action: "send", ...draft, requestId: id }))).status, 403);
   assert.equal(f.state.calls.length, 0);
   assert.equal(f.state.createdServices, 0);
+  assert.equal(f.state.afterTasks.length, 0, "Clients cannot schedule email dispatch");
   f = fixture(); f.state.authenticated = false;
   assert.equal((await f.route.POST(request({ action: "preview", ...draft }))).status, 401);
   f = fixture();
@@ -80,6 +83,12 @@ const request = (body, headers = {}) => new Request("https://app.test/api/admin/
   f = fixture();
   assert.equal((await f.route.POST(request({ action: "send", ...draft, clientId: id, requestId: id }))).status, 202);
   assert.equal(f.state.calls[0].args.p_client_id, id, "Registered-client sends retain the verified client ID");
+  assert.equal(f.state.afterTasks.length, 1, "Confirmed enqueue schedules immediate background dispatch");
+  assert.equal(f.state.sent.length, 0, "No SMTP before the durable receipt");
+  await f.state.afterTasks[0]();
+  assert(f.state.calls.some((call) => call.name === "claim_customer_email_jobs"));
+  f.state.dbError = { message: "private diagnostic" };
+  await f.state.afterTasks[0](); // Recovery failure cannot undo an acknowledged job.
   f = fixture();
   assert.equal((await f.route.POST(request({ action: "preview", ...draft }, { Origin: "https://evil.test" }))).status, 403);
   for (const patch of [{ recipientEmail: "a@example.test,b@example.test" }, { recipientEmail: "a@example.test\r\nBcc:b@example.test" }, { subject: "Subject\nBcc:test" }, { message: "x".repeat(12001) }, { clientId: "wrong" }]) assert.throws(() => f.content.parseCustomerEmailDraft({ ...draft, ...patch }));
@@ -89,6 +98,7 @@ const request = (body, headers = {}) => new Request("https://app.test/api/admin/
   assert(preview.html.includes("&lt;script&gt;")); assert(!preview.html.includes("<script>"));
   assert(preview.html.includes("Alex &lt;img")); assert(preview.html.includes("#061321"));
   assert.equal(f.state.sent.length, 0); assert.equal(f.state.calls.length, 0, "Preview cannot queue or send");
+  assert.equal(f.state.afterTasks.length, 0, "Preview cannot trigger background SMTP");
   assert.equal((await f.route.POST(request({ action: "preview", ...draft, clientId: id, recipientEmail: "stale@example.test" }))).status, 409);
   assert.equal((await f.route.POST(request({ action: "preview", ...draft, clientId: id }))).status, 200);
   assert(f.state.profileReads.includes("full_name,role"), "Client preview/send validation uses administrator RLS");
@@ -96,6 +106,7 @@ const request = (body, headers = {}) => new Request("https://app.test/api/admin/
   assert.equal(response.status, 202); assert.equal(f.state.calls[0].args.p_actor, id); assert.equal(f.state.calls[0].args.p_request_id, id); assert.equal(f.state.sent.length, 0, "Send only enqueues durable work");
   f.state.dbError = { message: "EMAIL_RATE_LIMIT" };
   assert.equal((await f.route.POST(request({ action: "send", ...draft, requestId: id }))).status, 429);
+  assert.equal(f.state.afterTasks.length, 1, "Rejected sends do not schedule additional dispatch");
   f.env.CUSTOMER_EMAILS_ENABLED = "false";
   assert.equal((await f.route.POST(request({ action: "send", ...draft, requestId: id }))).status, 503);
   const before = f.state.calls.length; await f.worker.dispatchCustomerEmails(); assert.equal(f.state.calls.length, before);

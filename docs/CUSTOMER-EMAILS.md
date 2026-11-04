@@ -9,7 +9,7 @@ Profile-access correction (4 November): client listing and selected-recipient pr
 - Admin sidebar → Emails (`/admin/emails`), using the existing dashboard layout and colored icon tile.
 - Search and paginate registered clients (25 per page). Email addresses are resolved from Supabase Auth on the server, never guessed from profile names. An external recipient can be entered instead.
 - One recipient per email, personalized greeting, editable subject and plain-text message, branded responsive HTML with the existing company icon, plus a plain-text alternative. No arbitrary HTML, attachments, CC/BCC, tracking pixels, or sender overrides are accepted.
-- Preview in an isolated, sandboxed iframe before an explicit Queue email action. Templates store the name, subject and message, excluding recipient details. Templates can be reused or deleted.
+- Preview in an isolated, sandboxed iframe before an explicit Send email action. The API stores a durable job first and uses Next.js `after` to start a background submission attempt immediately after acknowledging it. The existing scheduler recovers deferred or retryable work. Templates store the name, subject and message, excluding recipient details. Templates can be reused or deleted.
 - Paginated history includes recipient, subject, creation time, submission status, submission time, attempt count and safe error diagnostics. The visible History page refreshes every 15 seconds.
 - Verified-registration alerts go only to `support@custodialmanagement.net`. They include full name, registered email, registration time (UTC), verification time (UTC), Supabase user ID and verified status. No password, OTP, token, session or Auth metadata dump is included.
 
@@ -80,7 +80,7 @@ New server-only switch: **`CUSTOMER_EMAILS_ENABLED=true`** enables admin enqueue
 - Database transactions/advisory locks enforce 10 admin submissions per admin per 10 minutes, 5 per recipient per hour and 200 admin messages per day globally. The new worker claims at most two jobs per request and respects a 10-attempt/minute ceiling for this queue. Existing support-ticket alerts remain separate.
 - Workers use exclusive 180-second leases, stable Message-IDs and lease-token-guarded completion. Known pre-submission/connect/auth failures and explicit temporary SMTP rejection retry with exponential delay, up to six attempts.
 - **SMTP is not an exactly-once delivery protocol.** If an SMTP timeout/disconnect leaves acceptance uncertain, or a worker disappears mid-submission, the job is marked `uncertain`/Needs review. It is not automatically resent. Check Hostinger mailbox logs before authorizing any replacement message. Stable Message-ID is an aid to tracing, not a guarantee that a mail provider deduplicates.
-- Submitted means the server accepted the recipient; it does not mean delivered/read. Bounce processing or read receipts are not implemented. History stores only allowlisted error codes, not raw SMTP responses or credentials.
+- The stored `submitted` state appears as "Sent to mail server" in History: it means the server accepted the recipient, not that the email was delivered/read. `queued` appears as "Waiting to send" and `processing` as "Sending". Bounce processing or read receipts are not implemented. History stores only allowlisted error codes, not raw SMTP responses or credentials.
 - Existing signup and registration never wait for SMTP submission.
 
 ## Tests completed
