@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { DashboardWelcome, RecentAccountActivity, SupportToolkit } from "@/app/components/DashboardOverview";
 import ClientTicketCards from "@/app/components/ClientTicketCards";
 import { useTicketAttachmentUrls } from "@/lib/use-ticket-attachment-urls";
 import { useClientTicketUnread } from "@/lib/use-client-ticket-unread";
@@ -170,242 +171,6 @@ return (
 <p className="relative mt-2 text-xs leading-5 text-slate-400">{description}</p>
 </div>
 );
-}
-
-type DemoPayout = {
-  id: number;
-  name: string;
-  initials: string;
-  amountUSD: number;
-  asset: string;
-  date: string;
-};
-
-const americanFirstNames = [
-  "James", "John", "Robert", "Michael", "William", "David", "Richard", "Joseph",
-  "Thomas", "Charles", "Christopher", "Daniel", "Matthew", "Anthony", "Mark",
-  "Donald", "Steven", "Paul", "Andrew", "Joshua", "Mary", "Patricia", "Jennifer",
-  "Linda", "Elizabeth", "Barbara", "Susan", "Jessica", "Sarah", "Karen", "Lisa",
-  "Nancy", "Betty", "Margaret", "Sandra", "Ashley", "Kimberly", "Emily", "Donna",
-  "Michelle", "Carol", "Amanda", "Melissa", "Deborah", "Stephanie", "Rebecca",
-  "Laura", "Sharon", "Cynthia", "Kathleen", "Amy", "Nicole", "Samantha", "Megan",
-  "Olivia", "Emma", "Ava", "Sophia", "Isabella", "Mia", "Charlotte", "Amelia",
-  "Harper", "Evelyn", "Abigail", "Ella", "Scarlett", "Grace", "Chloe", "Lily",
-  "Benjamin", "Lucas", "Henry", "Alexander", "Mason", "Ethan", "Logan", "Jackson",
-  "Sebastian", "Jack", "Aiden", "Owen", "Samuel", "Ryan", "Nathan", "Caleb",
-];
-
-const americanLastNames = [
-  "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
-  "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson",
-  "Thomas", "Taylor", "Moore", "Jackson", "Martin", "Lee", "Perez", "Thompson",
-  "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker",
-  "Young", "Allen", "King", "Wright", "Scott", "Torres", "Nguyen", "Hill", "Flores",
-  "Green", "Adams", "Nelson", "Baker", "Hall", "Rivera", "Campbell", "Mitchell",
-  "Carter", "Roberts", "Gomez", "Phillips", "Evans", "Turner", "Diaz", "Parker",
-  "Cruz", "Edwards", "Collins", "Reyes", "Stewart", "Morris", "Morales", "Murphy",
-  "Cook", "Rogers", "Gutierrez", "Ortiz", "Morgan", "Cooper", "Peterson", "Bailey",
-  "Reed", "Kelly", "Howard", "Ramos", "Kim", "Cox", "Ward", "Richardson", "Watson",
-];
-
-const usedDemoNames = new Set<string>();
-
-function uniqueAmericanName(_id: number, _namespace: number) {
-  // Choose names randomly rather than walking through the name arrays in order.
-  // A shared Set prevents repeated names in the rotating payout examples.
-  const totalCombinations = americanFirstNames.length * americanLastNames.length;
-
-  for (let attempt = 0; attempt < totalCombinations; attempt += 1) {
-    const first = americanFirstNames[
-      Math.floor(Math.random() * americanFirstNames.length)
-    ];
-    const last = americanLastNames[
-      Math.floor(Math.random() * americanLastNames.length)
-    ];
-    const candidate = `${first} ${last}`;
-
-    if (!usedDemoNames.has(candidate)) {
-      usedDemoNames.add(candidate);
-      return candidate;
-    }
-  }
-
-  // Keep names unique even if the predefined combinations are exhausted.
-  let suffix = 2;
-  let fallback = `${americanFirstNames[Math.floor(Math.random() * americanFirstNames.length)]} ${americanLastNames[Math.floor(Math.random() * americanLastNames.length)]} ${suffix}`;
-  while (usedDemoNames.has(fallback)) {
-    suffix += 1;
-    fallback = `${americanFirstNames[Math.floor(Math.random() * americanFirstNames.length)]} ${americanLastNames[Math.floor(Math.random() * americanLastNames.length)]} ${suffix}`;
-  }
-  usedDemoNames.add(fallback);
-  return fallback;
-}
-
-const cryptoAssets = [
-  { symbol: "BTC", id: "bitcoin" },
-  { symbol: "ETH", id: "ethereum" },
-  { symbol: "USDT", id: "tether" },
-  { symbol: "USDC", id: "usd-coin" },
-  { symbol: "BNB", id: "binancecoin" },
-  { symbol: "SOL", id: "solana" },
-  { symbol: "XRP", id: "ripple" },
-];
-
-function makeDemoPayout(id: number): DemoPayout {
-  const name = uniqueAmericanName(id, 1);
-  const token = cryptoAssets[Math.floor(Math.random() * cryptoAssets.length)];
-  const amountUSD = Math.floor(14000 + Math.random() * (200000 - 14000));
-  const initials = name.split(" ").map((part) => part[0]).join("").slice(0, 2);
-  // Demo entries always show today's date; this is not a verified transaction timestamp.
-  const date = new Date();
-
-  return {
-    id,
-    name,
-    initials,
-    amountUSD,
-    asset: token.symbol,
-    date: date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }),
-  };
-}
-
-function WithdrawalPayoutCard() {
-  const [payouts, setPayouts] = useState<DemoPayout[]>([]);
-  const [prices, setPrices] = useState<Record<string, number>>({});
-  const [priceUpdatedAt, setPriceUpdatedAt] = useState<Date | null>(null);
-  const [priceUnavailable, setPriceUnavailable] = useState(false);
-  const nextPayoutId = useRef(4);
-
-  useEffect(() => {
-    setPayouts([makeDemoPayout(1), makeDemoPayout(2), makeDemoPayout(3)]);
-    nextPayoutId.current = 4;
-
-    const payoutTimer = window.setInterval(() => {
-      const id = nextPayoutId.current++;
-      const newPayout = makeDemoPayout(id);
-      setPayouts((current) => [newPayout, ...current].slice(0, 3));
-    }, 12000);
-
-    async function loadPrices() {
-      try {
-        const ids = cryptoAssets.map((asset) => asset.id).join(",");
-        const response = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
-          { cache: "no-store" }
-        );
-        if (!response.ok) throw new Error("Price request failed");
-        const data = await response.json();
-        const nextPrices: Record<string, number> = {};
-        for (const asset of cryptoAssets) {
-          const price = data?.[asset.id]?.usd;
-          if (typeof price === "number" && price > 0) nextPrices[asset.symbol] = price;
-        }
-        setPrices(nextPrices);
-        setPriceUpdatedAt(new Date());
-        setPriceUnavailable(false);
-      } catch {
-        setPriceUnavailable(true);
-      }
-    }
-
-    void loadPrices();
-    const priceTimer = window.setInterval(() => void loadPrices(), 60000);
-
-    return () => {
-      window.clearInterval(payoutTimer);
-      window.clearInterval(priceTimer);
-    };
-  }, []);
-
-  const formatCryptoEquivalent = (payout: DemoPayout) => {
-    const price = prices[payout.asset];
-    if (!price) return null;
-    const quantity = payout.amountUSD / price;
-    const maximumFractionDigits = payout.asset === "BTC" ? 8 : payout.asset === "ETH" || payout.asset === "BNB" || payout.asset === "SOL" ? 6 : 2;
-    return new Intl.NumberFormat("en-US", {
-      maximumFractionDigits,
-      minimumFractionDigits: 0,
-    }).format(quantity);
-  };
-
-  return (
-    <section className="min-w-0 overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#0c2238] via-[#081a2c] to-[#061321] shadow-[0_16px_44px_rgba(0,0,0,0.20)]">
-      <div className="flex items-start justify-between gap-4 border-b border-white/[0.07] p-5 sm:p-6">
-        <div>
-          <h3 className="font-semibold text-white">Recent Platform Activity</h3>
-        </div>
-        <span
-          role="img"
-          aria-label="Platform activity"
-          title="Platform activity"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-emerald-300/20 bg-emerald-300/10 text-emerald-200 shadow-[0_0_20px_rgba(52,211,153,0.08)]"
-        >
-          <svg
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-5 w-5"
-          >
-            <path d="M2.273 5.625A4.483 4.483 0 0 1 5.25 4.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0 0 18.75 3H5.25a3 3 0 0 0-2.977 2.625ZM2.273 8.625A4.483 4.483 0 0 1 5.25 7.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0 0 18.75 6H5.25a3 3 0 0 0-2.977 2.625ZM5.25 9a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3h13.5a3 3 0 0 0 3-3v-6a3 3 0 0 0-3-3H15a.75.75 0 0 0-.75.75 2.25 2.25 0 0 1-4.5 0A.75.75 0 0 0 9 9H5.25Z" />
-          </svg>
-        </span>
-      </div>
-
-      <div className="px-5 pb-2 pt-3 sm:px-6">
-        <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.9fr)] gap-3 border-b border-white/[0.07] pb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-xs">
-          <span>Customers</span>
-          <span>Withdrawal amount</span>
-          <span>Date</span>
-        </div>
-        <div aria-label="Recent platform activity" className="divide-y divide-white/[0.055]">
-          {payouts.map((payout, index) => {
-            const equivalent = formatCryptoEquivalent(payout);
-            return (
-              <div
-                key={payout.id}
-                className={`grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.9fr)] items-center gap-3 py-4 ${
-                  index === 0 ? "animate-[payout-in_450ms_ease-out]" : ""
-                }`}
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <div
-                    aria-hidden="true"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-xs font-semibold text-cyan-200"
-                  >
-                    {payout.initials}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-medium text-slate-200 sm:text-sm">{payout.name}</p>
-                    <p className="mt-1 text-[10px] text-slate-500">Sample customer</p>
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-white sm:text-sm">
-                    {payout.amountUSD.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}
-                  </p>
-                  <p className="mt-1 truncate text-[10px] text-cyan-200 sm:text-xs">
-                    {equivalent ? `${equivalent} ${payout.asset}` : `${payout.asset} equivalent loading`}
-                  </p>
-                </div>
-                <p className="text-[10px] leading-4 text-slate-400 sm:text-xs">{payout.date}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      <style jsx>{`
-        @keyframes payout-in {
-          from { opacity: 0; transform: translateY(-12px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-    </section>
-  );
 }
 
 export default function DashboardPage() {
@@ -1502,93 +1267,14 @@ Custodial<span className="text-cyan-300">Support</span>
       )}
 
       <div className={`mx-auto w-full ${isTicketChatOpen ? "max-w-none flex min-h-0 flex-1 flex-col overflow-hidden !p-0" : "max-w-[1600px] p-4 sm:p-7 lg:p-10"}`}>
-        {/* The account hero belongs to Overview; other sections have focused headers. */}
-        {activeSection === "Settings" || activeSection === "Withdrawals" || activeSection === "Notifications" || isTicketChatOpen ? null : activeSection === "Settings" ? (
-          <section className="relative isolate mb-6 min-h-0 overflow-hidden rounded-2xl border border-sky-400/20 bg-gradient-to-br from-[#071a31] via-[#08203b] to-[#071525] p-4 shadow-[0_16px_42px_rgba(0,0,0,0.22)] sm:rounded-3xl sm:p-6">
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-              <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blue-400/[0.08] blur-3xl sm:-right-8 sm:-top-12 sm:h-64 sm:w-64" />
-              <div className="absolute bottom-0 right-[8%] h-32 w-32 rounded-full bg-cyan-400/[0.06] blur-3xl sm:h-44 sm:w-44" />
-              <svg viewBox="0 0 420 420" fill="none" className="absolute -right-14 top-1/2 h-[190px] w-[190px] -translate-y-1/2 opacity-40 sm:-right-8 sm:h-[280px] sm:w-[280px] sm:opacity-75 lg:h-[310px] lg:w-[310px]" aria-hidden="true">
-                <defs>
-                  <linearGradient id="profileShield" x1="112" y1="62" x2="318" y2="344" gradientUnits="userSpaceOnUse"><stop stopColor="#8BE9FF"/><stop offset=".48" stopColor="#168BFF"/><stop offset="1" stopColor="#0C3E91"/></linearGradient>
-                  <radialGradient id="profileGlow"><stop stopColor="#0EA5E9" stopOpacity=".32"/><stop offset="1" stopColor="#0EA5E9" stopOpacity="0"/></radialGradient>
-                  <linearGradient id="profileOrbit" x1="72" y1="120" x2="350" y2="310" gradientUnits="userSpaceOnUse"><stop stopColor="#67E8F9" stopOpacity=".8"/><stop offset="1" stopColor="#2563EB" stopOpacity=".12"/></linearGradient>
-                </defs>
-                <circle cx="226" cy="210" r="174" fill="url(#profileGlow)"/>
-                <ellipse cx="226" cy="228" rx="150" ry="72" stroke="url(#profileOrbit)" strokeWidth="1.5" transform="rotate(-24 226 228)"/>
-                <ellipse cx="226" cy="228" rx="130" ry="58" stroke="#38BDF8" strokeOpacity=".25" transform="rotate(32 226 228)"/>
-                <circle cx="103" cy="174" r="4" fill="#67E8F9"/><circle cx="337" cy="270" r="4" fill="#60A5FA"/><circle cx="291" cy="90" r="3" fill="#A5F3FC"/>
-                <path d="M226 72 306 106V177C306 237 273 279 226 305C179 279 146 237 146 177V106L226 72Z" fill="#061A31" fillOpacity=".92" stroke="url(#profileShield)" strokeWidth="3"/>
-                <path d="M226 88 291 116V177C291 225 266 259 226 283C186 259 161 225 161 177V116L226 88Z" fill="url(#profileShield)" fillOpacity=".18" stroke="#67E8F9" strokeOpacity=".6" strokeWidth="1.5"/>
-                <circle cx="226" cy="157" r="23" fill="#7DD3FC" fillOpacity=".95"/>
-                <path d="M184 222C187 197 202 185 226 185C250 185 265 197 268 222V230H184V222Z" fill="#7DD3FC" fillOpacity=".95"/>
-                <rect x="300" y="95" width="48" height="54" rx="13" fill="#0B2744" stroke="#38BDF8" strokeOpacity=".75"/>
-                <path d="M316 119V112C316 107 320 103 324 103C329 103 333 107 333 112V119M313 119H336V137H313V119Z" stroke="#BAE6FD" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <rect x="291" y="284" width="52" height="52" rx="13" fill="#0B2744" stroke="#38BDF8" strokeOpacity=".7"/>
-                <path d="M317 296V301M317 319V324M305 310H310M324 310H329M309 302L312 305M322 315L325 318M325 302L322 305M312 315L309 318" stroke="#BAE6FD" strokeWidth="2.5" strokeLinecap="round"/>
-                <ellipse cx="226" cy="323" rx="91" ry="15" fill="#0EA5E9" fillOpacity=".13"/>
-                <path d="M152 320C169 336 283 336 300 320" stroke="#38BDF8" strokeOpacity=".45" strokeWidth="2"/>
-              </svg>
-              <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-sky-300/30 to-transparent" />
-            </div>
-            <div className="relative z-10 w-full sm:max-w-[68%] lg:max-w-[62%]">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/[0.07] px-2.5 py-1 text-[11px] font-medium text-emerald-200 sm:mb-4 sm:px-3 sm:py-1.5 sm:text-xs">
-                <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.7)]" />
-                Account connected
-              </div>
-              <div className="flex min-w-0 items-center gap-3 border-b border-white/[0.09] pb-3 sm:gap-4 sm:pb-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-blue-200/50 bg-gradient-to-br from-indigo-200 to-blue-300 text-xl font-semibold text-blue-700 shadow-[0_0_22px_rgba(59,130,246,0.16)] sm:h-16 sm:w-16 sm:text-3xl">
-                  {(userEmail.charAt(0) || userName.charAt(0) || "U").toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <h2 className="max-w-full break-all text-sm font-semibold tracking-tight text-white sm:text-xl">{userEmail || "Account email unavailable"}</h2>
-                  <p className="mt-1 text-xs text-slate-400 sm:text-sm">Client Account</p>
-                </div>
-              </div>
-              <div className="mt-3 grid gap-3 sm:mt-4 sm:gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-300/20 bg-sky-300/[0.08] text-sky-200 sm:h-9 sm:w-9 sm:rounded-xl">
-                    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 sm:h-5 sm:w-5" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20v-1.5a7 7 0 0 1 14 0V20H5Z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </span>
-                  <div className="min-w-0"><p className="text-[10px] text-slate-400 sm:text-xs">Full name</p><p className="mt-0.5 break-words text-xs font-medium text-white sm:mt-1 sm:text-base">{userName}</p></div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-300/20 bg-sky-300/[0.08] text-sky-200 sm:h-9 sm:w-9 sm:rounded-xl">
-                    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 sm:h-5 sm:w-5" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </span>
-                  <div className="min-w-0"><p className="text-[10px] text-slate-400 sm:text-xs">Email address</p><p className="mt-0.5 break-all text-xs font-medium text-white sm:mt-1 sm:text-base">{userEmail || "Email unavailable"}</p></div>
-                </div>
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section className="relative isolate mb-8 overflow-hidden rounded-3xl border border-cyan-200/[0.12] bg-gradient-to-br from-[#10253a]/95 via-[#0b1b2d]/95 to-[#091321] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)] sm:p-8">
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-              <div className="absolute -right-16 -top-28 h-72 w-72 rounded-full bg-cyan-300/[0.09] blur-3xl sm:h-96 sm:w-96" />
-              <div className="absolute bottom-[-7rem] right-[18%] h-56 w-56 rounded-full bg-teal-300/[0.07] blur-3xl" />
-              <svg viewBox="0 0 520 360" fill="none" className="absolute -right-24 -top-12 hidden h-[360px] w-[520px] opacity-70 sm:block" preserveAspectRatio="xMidYMid meet">
-                <defs><linearGradient id="heroLine" x1="80" y1="20" x2="450" y2="320" gradientUnits="userSpaceOnUse"><stop stopColor="#67E8F9" stopOpacity=".5"/><stop offset="1" stopColor="#2DD4BF" stopOpacity=".08"/></linearGradient><radialGradient id="heroGlow"><stop stopColor="#22D3EE" stopOpacity=".16"/><stop offset="1" stopColor="#22D3EE" stopOpacity="0"/></radialGradient></defs>
-                <circle cx="340" cy="150" r="150" fill="url(#heroGlow)"/><circle cx="340" cy="150" r="112" stroke="url(#heroLine)" strokeWidth="1.2"/><circle cx="340" cy="150" r="82" stroke="url(#heroLine)" strokeWidth="1" strokeDasharray="4 8"/><circle cx="340" cy="150" r="52" stroke="url(#heroLine)" strokeWidth="1.2"/><path d="M340 90 382 108V145C382 177 364 198 340 211C316 198 298 177 298 145V108L340 90Z" fill="#0B1B2D" fillOpacity=".82" stroke="#67E8F9" strokeOpacity=".6" strokeWidth="1.5"/><path d="m322 149 12 12 25-27" stroke="#99F6E4" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/><path d="M35 275 105 225 155 244 215 178 260 194 300 142 355 160 415 88 490 58" stroke="url(#heroLine)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M35 295 105 245 155 264 215 198 260 214 300 162 355 180 415 108 490 78" stroke="url(#heroLine)" strokeOpacity=".35" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
-                {[ [105,225], [215,178], [300,142], [415,88], [490,58] ].map(([cx,cy], i) => <circle key={i} cx={cx} cy={cy} r="3" fill="#99F6E4" fillOpacity=".8"/>)}
-              </svg>
-              <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-200/25 to-transparent" />
-            </div>
-            <div className="relative z-10 flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
-              <div className="max-w-2xl">
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[0.05] px-3 py-1.5 text-xs text-emerald-200"><span className="h-2 w-2 rounded-full bg-emerald-300"/>{activeSection === "Withdrawals" ? "Account updates" : "Account connected"}</div>
-                <h2 className="text-2xl font-semibold tracking-[-0.035em] text-white sm:text-3xl">{activeSection === "Withdrawals" ? <>Stay informed about your account<span className="text-cyan-300">.</span></> : <>Welcome back, <span className="text-cyan-300">{userName}</span></>}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">{activeSection === "Withdrawals" ? "Check notifications for important account messages, support replies, and withdrawal updates." : "Review your account information and get help with a transaction."}</p>
-                {activeSection === "Withdrawals" && (
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-cyan-200/15 bg-cyan-200/[0.06] px-3 py-2 text-xs text-cyan-100">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-4 w-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9a6 6 0 0 0-12 0v.75a8.967 8.967 0 0 1-2.31 6.022 23.848 23.848 0 0 0 5.455 1.31m5.712 0a24.255 24.255 0 0 1-5.712 0m5.712 0a3 3 0 1 1-5.712 0" /></svg>
-                    {unreadNotificationCount > 0 ? `${unreadNotificationCount} unread account ${unreadNotificationCount === 1 ? "update" : "updates"}` : "No unread account updates"}
-                  </div>
-                )}
-              </div>
-              <button onClick={() => { if (activeSection === "Withdrawals") { selectSection("Notifications"); } else { selectSection("Support tickets"); setShowTicketForm(true); } setSuccessMessage(""); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-300 to-teal-300 px-5 py-3 text-sm font-semibold text-[#06111d] shadow-lg shadow-cyan-950/20 transition duration-200 hover:-translate-y-0.5 hover:from-cyan-200 hover:to-teal-200 active:translate-y-0">{activeSection === "Withdrawals" ? <><span>View notifications</span><span aria-hidden="true">→</span></> : <><span className="text-lg">+</span>Open support ticket</>}</button>
-            </div>
-          </section>
-        )}
+        {activeSection === "Overview" || (activeSection === "Support tickets" && !isTicketChatOpen) ? (
+          <DashboardWelcome
+            name={userName}
+            unreadCount={unreadNotificationCount}
+            onOpenTicket={() => { selectSection("Support tickets"); setShowTicketForm(true); setSuccessMessage(""); }}
+            onViewUpdates={() => { selectSection("Notifications"); setSuccessMessage(""); }}
+          />
+        ) : null}
 
         {successMessage && !isTicketChatOpen && (
           <div
@@ -1684,44 +1370,11 @@ Custodial<span className="text-cyan-300">Support</span>
               </article>
             </section>
 
-            <section className="mt-8" aria-labelledby="recent-activity-title">
-              <header className="mb-3 flex flex-wrap items-end justify-between gap-3 border-b border-white/[0.08] pb-4">
-                <div>
-                  <h3 id="recent-activity-title" className="text-lg font-semibold text-white">Recent activity</h3>
-                  <p className="mt-1 text-sm text-slate-400">Account, withdrawal, and support updates</p>
-                </div>
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-slate-400">{recentActivity.length} updates</span>
-              </header>
-              <div className="grid grid-cols-[minmax(0,1fr)] gap-3 px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500 sm:grid-cols-[minmax(150px,0.85fr)_minmax(0,1.5fr)_minmax(120px,auto)] sm:px-4">
-                <span>Activity</span><span className="hidden sm:block">Details</span><span className="hidden sm:block">Date</span>
-              </div>
-              {recentActivity.length > 0 ? (
-                <ol className="scrollbar-hide max-h-[330px] divide-y divide-white/[0.07] overflow-y-auto overscroll-contain border-y border-white/[0.08] pr-1">
-                  {recentActivity.map((item) => {
-                    const activityIcon = item.kind === "notification" ? "♧" : item.kind === "withdrawal" ? "↗" : item.kind === "message" ? "↗" : "▤";
-                    const activityTone = item.kind === "notification" ? "border-amber-200/15 bg-amber-200/[0.06] text-amber-100" : item.kind === "withdrawal" ? "border-cyan-200/15 bg-cyan-200/[0.06] text-cyan-100" : item.kind === "message" ? "border-emerald-200/15 bg-emerald-200/[0.06] text-emerald-100" : "border-blue-200/15 bg-blue-200/[0.06] text-blue-100";
-                    return (
-                      <li key={item.id}>
-                        <button type="button" onClick={() => { selectSection(item.section); setSuccessMessage(""); setShowTicketForm(false); }} className="grid w-full grid-cols-[minmax(0,1fr)] items-center gap-1 px-2 py-3 text-left transition hover:bg-white/[0.025] sm:grid-cols-[minmax(150px,0.85fr)_minmax(0,1.5fr)_minmax(120px,auto)] sm:gap-4 sm:px-4 sm:py-4">
-                          <span className="flex min-w-0 items-center gap-3">
-                            <span className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm " + activityTone}>{activityIcon}</span>
-                            <span className="truncate text-sm font-medium text-slate-100">{item.title}</span>
-                          </span>
-                          <span className="line-clamp-2 break-words pl-12 text-xs leading-5 text-slate-400 sm:pl-0">{item.detail}</span>
-                          <time className="pl-12 text-[11px] text-slate-500 sm:pl-0 sm:text-right" dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</time>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ol>
-              ) : (
-                <p className="border-y border-white/[0.08] py-8 text-center text-sm text-slate-400">Your account activity will appear here.</p>
-              )}
-            </section>
-
-            <section className="mt-8">
-              <WithdrawalPayoutCard />
-            </section>
+            <RecentAccountActivity
+              items={recentActivity}
+              onNavigate={(section) => { selectSection(section); setSuccessMessage(""); setShowTicketForm(false); }}
+            />
+            <SupportToolkit onNavigate={(section) => { selectSection(section); setSuccessMessage(""); setShowTicketForm(false); }} />
           </>
         )}
 
