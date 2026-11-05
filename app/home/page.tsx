@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import LandingStatusGuide from "@/app/components/LandingStatusGuide";
 import HeroRotatingWord from "@/app/components/HeroRotatingWord";
 import { LandingSupportFinder, LandingSupportJourney, LandingSupportPreparation, LandingSupportFAQ } from "@/app/components/LandingSupportSections";
 
@@ -50,158 +51,6 @@ function ChatBubbleIcon() {
     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
       <path fillRule="evenodd" d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 0 1-.814 1.686.75.75 0 0 0 .44 1.223ZM8.25 10.875a1.125 1.125 0 1 0 0 2.25 1.125 1.125 0 0 0 0-2.25ZM10.875 12a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Zm4.875-1.125a1.125 1.125 0 1 0 0 2.25 1.125 1.125 0 0 0 0-2.25Z" clipRule="evenodd" />
     </svg>
-  );
-}
-
-type DemoTestimonial = {
-  id: number;
-  name: string;
-  initials: string;
-  message: string;
-  rating: number;
-};
-
-const demoTestimonials: Omit<DemoTestimonial, "id">[] = [
-  {
-    name: "Megan Roberts",
-    initials: "MR",
-    message: "The follow-up helped me make sense of the account security steps I should follow. I appreciate the courteous support.",
-    rating: 4,
-  },
-  {
-    name: "Lucas Harris",
-    initials: "LH",
-    message: "I valued the straightforward communication about the steps for tracking a request. That made the process easier to understand.",
-    rating: 4,
-  },
-  {
-    name: "Karen Hall",
-    initials: "KH",
-    message: "I was glad to receive a clear update regarding the information available about my request. Thank you for taking the time to respond.",
-    rating: 5,
-  },
-  {
-    name: "Ava Mitchell",
-    initials: "AM",
-    message: "The team explained what information to check next and made the support process easy to follow.",
-    rating: 5,
-  },
-  {
-    name: "Daniel Wright",
-    initials: "DW",
-    message: "I received a helpful status update and a clear explanation of the next steps for my request.",
-    rating: 4,
-  },
-  {
-    name: "Olivia Carter",
-    initials: "OC",
-    message: "The response was courteous and practical. I appreciated having the details laid out clearly.",
-    rating: 5,
-  },
-];
-
-function CustomerFeedbackCard() {
-  const [testimonials, setTestimonials] = useState<DemoTestimonial[]>(() =>
-    [1, 2, 3].map((id) => ({
-      ...demoTestimonials[(id - 1) % demoTestimonials.length],
-      id,
-    }))
-  );
-  const nextId = useRef(4);
-
-  useEffect(() => {
-    const makeTestimonial = (id: number): DemoTestimonial => ({
-      ...demoTestimonials[(id - 1) % demoTestimonials.length],
-      id,
-    });
-
-    const testimonialTimer = window.setInterval(() => {
-      const newTestimonial = makeTestimonial(nextId.current++);
-      setTestimonials((current) => [newTestimonial, ...current].slice(0, 3));
-    }, 7000);
-
-    return () => window.clearInterval(testimonialTimer);
-  }, []);
-
-  return (
-    <section className="min-w-0 overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-[#0c2238] via-[#081a2c] to-[#061321] shadow-[0_16px_44px_rgba(0,0,0,0.20)]">
-      <div className="flex items-start justify-between gap-4 border-b border-white/[0.07] p-4 sm:p-5">
-        <div>
-          <h3 className="font-semibold text-white">Customer feedback</h3>
-          <p className="mt-1 text-xs text-slate-500">Illustrative support experiences</p>
-        </div>
-        <span
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-200 shadow-[0_0_20px_rgba(34,211,238,0.08)]"
-          aria-hidden="true"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-5 w-5"
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z"
-            />
-            <path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z" />
-          </svg>
-        </span>
-      </div>
-
-      <div
-        aria-live="polite"
-        className="grid grid-cols-1 auto-rows-[220px] gap-3 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3 [overflow-anchor:none]"
-      >
-        {testimonials.map((testimonial, index) => (
-          <article
-            key={testimonial.id}
-            className={`relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-br from-[#102a46] via-[#0a1c31] to-[#071321] p-4 shadow-[0_14px_36px_rgba(0,0,0,0.2)] transition duration-300 hover:border-cyan-300/20 ${
-              index === 0 ? "animate-[testimonial-in_450ms_ease-out]" : ""
-            }`}
-          >
-            <span aria-hidden="true" className="pointer-events-none absolute -right-1 -top-5 select-none font-serif text-7xl leading-none text-cyan-300/[0.06]">“</span>
-            <div className="relative flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div
-                  aria-hidden="true"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-xs font-semibold text-cyan-200"
-                >
-                  {testimonial.initials}
-                </div>
-                <div className="min-w-0">
-                  <p className="break-words text-sm font-semibold text-white">
-                    {testimonial.name}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="mt-3 text-sm tracking-[0.12em] text-amber-300"
-              aria-label={`${testimonial.rating} out of 5 sample stars`}
-            >
-              {"★".repeat(testimonial.rating)}
-              <span className="text-slate-600">
-                {"★".repeat(5 - testimonial.rating)}
-              </span>
-            </div>
-
-            <blockquote className="mt-2 min-h-0 overflow-hidden text-sm leading-6 text-slate-300 line-clamp-4">
-              “{testimonial.message}”
-            </blockquote>
-          </article>
-        ))}
-      </div>
-
-      <style jsx>{`
-        @keyframes testimonial-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
-    </section>
   );
 }
 
@@ -1157,12 +1006,7 @@ export default function Home() {
       <LandingSupportPreparation />
       <LandingSupportFAQ />
 
-      {/* Customer feedback appears before the closing support section. */}
-      <section className="px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
-        <div className="mx-auto max-w-7xl">
-          <CustomerFeedbackCard />
-        </div>
-      </section>
+      <LandingStatusGuide />
 
       {/* Support Overview / Contact Card */}
       <section
