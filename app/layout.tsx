@@ -1,3 +1,4 @@
+import Script from "next/script";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -65,7 +66,33 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">{children}
+      <Script
+  id="smartsupp-chat"
+  strategy="afterInteractive"
+  dangerouslySetInnerHTML={{
+    __html: `
+      var _smartsupp = window._smartsupp || {};
+      _smartsupp.key = '951fb46282afc63496427e8fbbe184821af58267';
+      window._smartsupp = _smartsupp;
+
+      window.smartsupp || (function(d) {
+        var s, c, o = window.smartsupp = function() {
+          o._.push(arguments);
+        };
+        o._ = [];
+        s = d.getElementsByTagName('script')[0];
+        c = d.createElement('script');
+        c.type = 'text/javascript';
+        c.charset = 'utf-8';
+        c.async = true;
+        c.src = 'https://www.smartsuppchat.com/loader.js?';
+        s.parentNode.insertBefore(c, s);
+      })(document);
+    `,
+  }}
+/>
+      </body>
     </html>
   );
 }
