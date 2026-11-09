@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+/* Hide vendor chrome immediately; lifecycle cleanup also unloads its JS. */
+html:not([data-live-chat-visible="true"]) #smartsupp-widget-container,
+html:has([role="dialog"][aria-modal="true"]) #smartsupp-widget-container {
+  display: none !important;
+  pointer-events: none !important;
+}
+html:has([role="dialog"][aria-modal="true"]) aside[aria-label="Live chat privacy"] { display: none !important; }
+
+/* Constrain the vendor's desktop-sized panel on narrow or short viewports. */
+#smartsupp-widget-container > div:has(> #widgetMessengerFrame) {
+  max-width: min(380px, calc(100vw - 24px)) !important;
+  max-height: min(600px, calc(100dvh - 40px)) !important;
+}
+
 .landing-page { font-family: Arial, Helvetica, sans-serif; }
 .landing-page section[id] { scroll-margin-top: 100px; }
 .landing-eyebrow { font-size: 10px; line-height: 1.7; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: #8fe5e8; }

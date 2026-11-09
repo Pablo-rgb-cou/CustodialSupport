@@ -7,9 +7,11 @@ import { defaultIdleTimeoutMs, recordSessionActivity, sessionActivityKey } from 
 
 // Mount only for an authenticated dashboard. Navigation preserves the timestamp;
 // a new explicit sign-in records fresh activity before entering the dashboard.
-export function useIdleSession(userId: string, onExpired: () => void, { timeoutMs = defaultIdleTimeoutMs }: { timeoutMs?: number } = {}) {
+export function useIdleSession(userId: string, onExpired: () => void, { timeoutMs = defaultIdleTimeoutMs, onSignedOut }: { timeoutMs?: number; onSignedOut?: () => void } = {}) {
   const expiredCallback = useRef(onExpired);
+  const signedOutCallback = useRef(onSignedOut);
   useEffect(() => { expiredCallback.current = onExpired; }, [onExpired]);
+  useEffect(() => { signedOutCallback.current = onSignedOut; }, [onSignedOut]);
   useEffect(() => {
     if (!userId) return;
     let active = true;
@@ -31,7 +33,7 @@ export function useIdleSession(userId: string, onExpired: () => void, { timeoutM
       expiredCallback.current();
       void withRequestTimeout(() => supabase.auth.signOut({ scope: "local" }), { timeoutMs: 5000 }).catch(() => {
         // The expired activity marker still prevents re-entry until a fresh sign-in.
-      });
+      }).finally(() => signedOutCallback.current?.());
     };
     const check = () => {
       read();

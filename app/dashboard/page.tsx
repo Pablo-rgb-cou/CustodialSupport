@@ -1,5 +1,5 @@
 "use client";
-
+import SmartsuppChat from "../components/SmartsuppChat";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { DashboardWelcome, RecentAccountActivity, SupportToolkit } from "@/app/components/DashboardOverview";
@@ -11,6 +11,7 @@ import { dispatchTicketEmail } from "@/lib/dispatch-ticket-email";
 import { withRequestTimeout } from "@/lib/with-request-timeout";
 import { useIdleSession } from "@/lib/use-idle-session";
 import { sessionHasEnded } from "@/lib/session-activity";
+import { leaveClientDashboard, revokeSmartsupp } from "@/lib/smartsupp-lifecycle";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useClientTicketConversation, type ClientTicketMessage } from "@/lib/use-client-ticket-conversation";
@@ -183,6 +184,11 @@ const [authCheckError, setAuthCheckError] = useState("");
 const [authSessionMissing, setAuthSessionMissing] = useState(false);
 const [authRetryCount, setAuthRetryCount] = useState(0);
 const [signingOut, setSigningOut] = useState(false);
+
+// Chat requires both server-verified Auth and a protected profiles.role lookup.
+const [smartsuppAuthorized, setSmartsuppAuthorized] = useState(false);
+const signingOutRef = useRef(false);
+const idleExpiredRef = useRef(false);
 
 const [activeSection, setActiveSection] = useState("Overview");
 const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -403,87 +409,124 @@ function selectSection(label: string) {
 }
 
 useIdleSession(currentUserId, () => {
+  idleExpiredRef.current = true;
+  revokeSmartsupp(true);
+  setSmartsuppAuthorized(false);
   setCurrentUserId("");
   setAuthLoading(true);
   setSelectedTicketId(null);
   setPopupNotification(null);
-  router.replace("/login?reason=session-expired");
+}, {
+  onSignedOut: () => leaveClientDashboard("/login?reason=session-expired", (url) => router.replace(url)),
 });
 
 useEffect(() => {
   let active = true;
+  let verifiedId = "";
+  let accountChangeTimer: ReturnType<typeof setTimeout> | undefined;
   const controller = new AbortController();
   setAuthLoading(true);
   setAuthCheckError("");
+  setSmartsuppAuthorized(false);
   setAuthSessionMissing(false);
 
-  const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+  const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT") {
+      controller.abort(); // A delayed getUser/role response must never re-enable chat.
+      revokeSmartsupp(true);
       setAuthLoading(true);
+      setSmartsuppAuthorized(false);
       setCurrentUserId("");
       setSelectedTicketId(null);
       setPopupNotification(null);
       popupAnnouncementCache.current = [];
-      router.replace("/login");
+      leaveClientDashboard(idleExpiredRef.current ? "/login?reason=session-expired" : "/login", (url) => router.replace(url));
+    } else if (event === "SIGNED_IN" && verifiedId && session?.user.id !== verifiedId) {
+      controller.abort();
+      revokeSmartsupp(true);
+      setSmartsuppAuthorized(false);
+      setAuthLoading(true);
+      // Do not await another Supabase operation inside its auth callback.
+      accountChangeTimer = setTimeout(() => {
+        if (active) leaveClientDashboard(window.location.href, () => setAuthRetryCount((value) => value + 1));
+      }, 0);
     }
   });
 
   async function requireFreshSignIn() {
     if (!active) return;
+    revokeSmartsupp(true);
+    setSmartsuppAuthorized(false);
     setCurrentUserId("");
     setAuthSessionMissing(true);
     try { await withRequestTimeout(() => supabase.auth.signOut({ scope: "local" }), { signal: controller.signal, timeoutMs: 5000 }); }
-    finally { if (active) router.replace("/login"); }
+    finally { if (active) leaveClientDashboard("/login", (url) => router.replace(url)); }
   }
 
   async function loadUser() {
     try {
       const { data: { user }, error } = await withRequestTimeout(() => supabase.auth.getUser(), { signal: controller.signal });
-      if (!active) return;
+      if (!active || controller.signal.aborted || signingOutRef.current || idleExpiredRef.current) return;
       if (error) {
         if (sessionHasEnded(error)) { await requireFreshSignIn(); return; }
         throw new Error("We couldn't verify your session just now. Please try again.");
       }
       if (!user) { await requireFreshSignIn(); return; }
+      verifiedId = user.id;
       const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Client";
       setCurrentUserId(user.id);
       setUserName(name);
       setUserEmail(user.email ?? "");
       setFullName(name);
       setEmail(user.email ?? "");
+
       // Only authentication gates the page. Independent data sections load next.
+      setAuthLoading(false);
+      // A stored session or editable user_metadata is not an authorization role.
+      // Fail closed for chat if the role is absent, inaccessible, or not client.
+      const { data: profile, error: roleError } = await withRequestTimeout(
+        (signal) => supabase.from("profiles").select("role").eq("id", user.id).abortSignal(signal).maybeSingle(),
+        { signal: controller.signal },
+      );
+      if (active && !controller.signal.aborted && !signingOutRef.current && !idleExpiredRef.current) {
+        setSmartsuppAuthorized(!roleError && profile?.role === "client");
+      }
     } catch (error) {
       if (active && !controller.signal.aborted) {
         console.warn("Could not verify the client session:", error);
-        setAuthCheckError("We couldn't verify your session just now. Please try again.");
+        // A live-chat role lookup failure must not block working ticket support.
+        if (!verifiedId) setAuthCheckError("We couldn't verify your session just now. Please try again.");
       }
     } finally {
-      if (active) setAuthLoading(false);
+      if (active && !controller.signal.aborted) setAuthLoading(false);
     }
   }
   void loadUser();
   return () => {
     active = false;
     controller.abort();
+    clearTimeout(accountChangeTimer);
     authListener.subscription.unsubscribe();
   };
 }, [router, authRetryCount]);
 
 
 async function handleSignOut() {
+signingOutRef.current = true;
+revokeSmartsupp(true);
+setSmartsuppAuthorized(false);
 setSigningOut(true);
-
-const { error } = await supabase.auth.signOut();
-
-if (error) {
+try {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+  leaveClientDashboard("/login", (url) => router.replace(url));
+} catch {
   setSuccessMessage("Unable to sign out. Please try again.");
+  signingOutRef.current = false;
   setSigningOut(false);
-  return;
+  // Remain usable, but keep live chat revoked until a fresh page verification.
+  leaveClientDashboard(window.location.href, () => {});
 }
-
-router.replace("/login");
-router.refresh();
-
 }
 
 function openSection(label: string) {
@@ -1080,6 +1123,9 @@ Loading your dashboard...
 
 return (
 <main ref={clientChatShellRef} data-client-conversation-open={isTicketChatOpen ? "true" : undefined} style={isTicketChatOpen ? { top: "var(--client-chat-top, 0px)", height: "var(--client-chat-height, 100dvh)" } : undefined} className={`${isTicketChatOpen ? "fixed inset-x-0 min-h-0 overflow-hidden" : "min-h-screen"} bg-[#020a14] text-white selection:bg-cyan-300/25 selection:text-cyan-50`}>
+{smartsuppAuthorized && !authLoading && !signingOut && !authCheckError && (
+  <SmartsuppChat key={currentUserId} userId={currentUserId} profileName={userName} hidden={isTicketChatOpen || mobileMenuOpen || showTicketForm || activeSection === "Settings" || Boolean(popupNotification || selectedNotification || ticketPhotoViewerUrl)} />
+)}
 <div className={`relative isolate flex ${isTicketChatOpen ? "h-full min-h-0 overflow-hidden" : "min-h-screen overflow-x-clip"} bg-[radial-gradient(ellipse_at_72%_0%,rgba(14,165,233,0.14),transparent_34%),radial-gradient(ellipse_at_4%_56%,rgba(8,145,178,0.09),transparent_30%),linear-gradient(135deg,#020a14_0%,#07182a_48%,#020a14_100%)]`}>
 {/* Sidebar */}
 <aside className="fixed inset-y-0 left-0 z-30 hidden h-dvh w-[270px] shrink-0 flex-col border-r border-cyan-200/[0.07] bg-[#04101e]/95 shadow-[12px_0_40px_rgba(0,0,0,0.12)] lg:flex">

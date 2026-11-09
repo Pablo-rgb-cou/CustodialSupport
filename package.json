@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:auth": "node --test tests/auth-flows.test.cjs",
+    "test:smartsupp": "node --test tests/smartsupp.test.cjs",
     "test:email": "node tests/support-email.test.cjs",
     "test:customer-emails": "node tests/customer-email.test.cjs",
     "test:contact": "node tests/contact-email.test.cjs",
