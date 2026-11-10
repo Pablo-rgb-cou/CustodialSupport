@@ -1212,9 +1212,9 @@ Custodial<span className="text-cyan-300">Support</span>
     </aside>
 
     {/* Main content */}
-    <div className={`min-w-0 flex-1 lg:ml-[270px] ${isTicketChatOpen ? "flex h-full min-h-0 flex-col overflow-hidden" : ""}`}>
+    <div className={`client-dashboard-column min-w-0 flex-1 lg:ml-[270px] ${isTicketChatOpen ? "flex h-full min-h-0 flex-col overflow-hidden" : ""}`}>
       {/* Top navigation */}
-      <header className="sticky top-0 z-40 flex min-h-20 shrink-0 items-center justify-between gap-4 border-b border-white/[0.08] bg-[#07111f]/95 px-4 shadow-[0_8px_30px_rgba(0,0,0,0.18)] backdrop-blur-2xl sm:px-7 lg:px-10">
+      <header className="client-dashboard-header z-40 flex shrink-0 items-center justify-between gap-4 border-b border-white/[0.08] shadow-[0_8px_30px_rgba(0,0,0,0.18)]">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
@@ -1259,7 +1259,7 @@ Custodial<span className="text-cyan-300">Support</span>
           <nav
             id="mobile-dashboard-menu"
             aria-label="Mobile dashboard navigation"
-            className="fixed left-4 right-4 top-[5.5rem] z-30 max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/[0.09] bg-[#0b1728]/95 p-3 shadow-2xl shadow-black/50 backdrop-blur-2xl sm:left-7 sm:right-7 lg:hidden"
+            className="client-dashboard-menu fixed left-4 right-4 z-30 overflow-y-auto overscroll-contain rounded-2xl border border-white/[0.09] bg-[#0b1728]/95 p-3 shadow-2xl shadow-black/50 backdrop-blur-2xl sm:left-7 sm:right-7 lg:hidden"
           >
             <p className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Navigation</p>
             {navigation.map((item) => (

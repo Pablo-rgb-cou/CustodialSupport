@@ -24,6 +24,33 @@ html:has([role="dialog"][aria-modal="true"]) aside[aria-label="Live chat privacy
 }
 
 /* Keep conversation chrome outside the transcript's scrolling area. */
+.client-dashboard-column {
+  --client-header-height: calc(5rem + env(safe-area-inset-top, 0px));
+  --client-header-padding: 1rem;
+  padding-top: var(--client-header-height);
+}
+.client-dashboard-header {
+  position: fixed;
+  inset: 0 0 auto;
+  height: var(--client-header-height);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(var(--client-header-padding), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--client-header-padding), env(safe-area-inset-right, 0px));
+  /* Opaque through the safe area: scrolling cards cannot bleed above/through it. */
+  background: #07111f;
+}
+.client-dashboard-menu {
+  top: calc(var(--client-header-height) + .5rem);
+  max-height: calc(100dvh - var(--client-header-height) - 1rem - env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 640px) {
+  .client-dashboard-column { --client-header-padding: 1.75rem; }
+}
+@media (min-width: 1024px) {
+  .client-dashboard-column { --client-header-padding: 2.5rem; }
+  .client-dashboard-header { left: 270px; }
+}
+[data-client-conversation-open="true"] .client-dashboard-column { padding-top: 0; }
 [data-client-conversation-open="true"] > div > aside,
 [data-client-conversation-open="true"] > div > div > header,
 [data-admin-conversation-open="true"] > aside,
