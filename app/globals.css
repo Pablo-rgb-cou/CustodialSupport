@@ -6,7 +6,6 @@ html:has([role="dialog"][aria-modal="true"]) #smartsupp-widget-container {
   display: none !important;
   pointer-events: none !important;
 }
-html:has([role="dialog"][aria-modal="true"]) aside[aria-label="Live chat privacy"] { display: none !important; }
 
 /* Constrain the vendor's desktop-sized panel on narrow or short viewports. */
 #smartsupp-widget-container > div:has(> #widgetMessengerFrame) {

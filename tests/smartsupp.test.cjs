@@ -28,30 +28,48 @@ function browser(pathname = '/dashboard') {
   return { ...ctx.exports, ctx, window, doc, scripts, navigations, listeners, warnings, flush: () => { const fns = [...timers.values()]; timers.clear(); fns.forEach((fn) => fn()); } };
 }
 const settle = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
-test('optional consent choices are independent, revocable, and ignored outside an active client dashboard', () => {
-  const b = browser(); b.setSmartsuppConsent(true, true, 'Fixture'); assert.equal(b.scripts.length, 0);
+test('chat-only lifecycle has no consent-grant API and never grants tracking on navigation', () => {
+  const b = browser();
+  assert.equal(b.setSmartsuppConsent, undefined);
   b.mountSmartsupp('client-1'); b.setSmartsuppVisibility(true);
-  b.setSmartsuppConsent(true, false);
-  let calls = b.window.smartsupp._.map(args => [...args]);
-  assert.deepEqual(JSON.parse(JSON.stringify(calls.slice(-2))), [['analyticsConsent', true], ['marketingConsent', false]]);
-  assert.equal(calls.some(([cmd]) => cmd === 'name'), false);
-  b.setSmartsuppConsent(false, true, 'Fixture');
-  calls = b.window.smartsupp._.map(args => [...args]); assert.deepEqual(JSON.parse(JSON.stringify(calls.slice(-3))), [['analyticsConsent', false], ['marketingConsent', true], ['name', 'Fixture']]);
-  b.setSmartsuppConsent(false, false); assert.deepEqual(JSON.parse(JSON.stringify(b.window.smartsupp._.map(args => [...args]).slice(-2))), [['analyticsConsent', false], ['marketingConsent', false]]);
-  b.revokeSmartsupp(); const count = b.window.smartsupp._.length; b.setSmartsuppConsent(true, true, 'Denied'); assert.equal(b.window.smartsupp._.length, count);
+  for (let i = 0; i < 3; i++) { b.setSmartsuppVisibility(false); b.setSmartsuppVisibility(true); }
+  const calls = JSON.parse(JSON.stringify(b.window.smartsupp._));
+  assert.deepEqual(calls.filter(([cmd]) => cmd.endsWith('Consent')), [['analyticsConsent', false], ['marketingConsent', false]]);
+  assert.ok(calls.every(([cmd]) => ['analyticsConsent', 'marketingConsent', 'chat:show', 'chat:hide', 'chat:close'].includes(cmd)));
 });
 const deferred = () => { let resolve; const promise = new Promise((r) => { resolve = r; }); return { promise, resolve }; };
-test('consent form renders unchecked choices and stays bounded on mobile and desktop', () => {
+test('chat component renders no custom privacy interface, including hidden views', () => {
   const exports = {}, react = require('react');
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/components/SmartsuppChat.tsx', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText, {
     exports, require: name => name === 'next/navigation' ? { usePathname: () => '/dashboard' } : name === '@/lib/smartsupp-lifecycle' ? {} : require(name),
   });
-  const html = require('react-dom/server').renderToStaticMarkup(react.createElement(exports.default, { userId: 'fixture', hidden: false, profileName: 'Fixture' }));
-  assert.equal((html.match(/type="checkbox"/g) || []).length, 3);
-  assert.equal(html.includes('checked=""'), false);
-  assert.match(html, /Reject optional/); assert.match(html, /Save choices/);
-  assert.match(html, /max-w-\[calc\(100vw-2rem\)\]/); assert.match(html, /max-h-\[calc\(100dvh-2rem\)\]/);
-  assert.equal(require('react-dom/server').renderToStaticMarkup(react.createElement(exports.default, { userId: 'fixture', hidden: true, profileName: 'Fixture' })), '');
+  for (const hidden of [false, true]) {
+    assert.equal(require('react-dom/server').renderToStaticMarkup(react.createElement(exports.default, { userId: 'fixture', hidden })), '');
+  }
+});
+test('authorized component automatically mounts chat, preserves hidden views, and cleans up', () => {
+  for (const pathname of ['/dashboard', '/home', '/admin/tickets']) {
+    const effects = [], exports = {}, calls = [];
+    vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/components/SmartsuppChat.tsx', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
+      exports, require: name => ({
+        react: { useEffect: fn => effects.push(fn) },
+        'next/navigation': { usePathname: () => pathname },
+        '@/lib/smartsupp-lifecycle': {
+          mountSmartsupp: id => { calls.push(['mount', id]); return () => calls.push(['cleanup']); },
+          setSmartsuppVisibility: visible => calls.push(['visible', visible]),
+        },
+      })[name],
+    });
+    assert.equal(exports.default({ userId: 'fixture', hidden: false }), null);
+    const cleanups = effects.map(fn => fn());
+    if (pathname === '/dashboard') {
+      assert.deepEqual(calls, [['mount', 'fixture'], ['visible', true]]);
+      cleanups.filter(Boolean).forEach(fn => fn()); assert.deepEqual(calls.at(-1), ['cleanup']);
+      effects.length = 0; calls.length = 0;
+      exports.default({ userId: 'fixture', hidden: true }); effects.forEach(fn => fn());
+      assert.deepEqual(calls, [['mount', 'fixture'], ['visible', false]]);
+    } else assert.deepEqual(calls, [['visible', false]]);
+  }
 });
 function auth({ user = { id: 'client-1', email: 'fixture@example.invalid', user_metadata: {} }, error = null, role = 'client', roleError = null, userPromise, rolePromise } = {}) {
   const b = browser(), soft = [], state = {}, queries = [];

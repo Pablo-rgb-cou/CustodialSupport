@@ -2,8 +2,8 @@
 export const SMARTSUPP_KEY = "951fb46282afc63496427e8fbbe184821af58267";
 export const SMARTSUPP_LOADER_ID = "custodial-smartsupp-loader";
 const ownerKey = "custodialsupport:live-chat-owner:v1";
-type ChatCommand = "chat:show" | "chat:hide" | "chat:close" | "analyticsConsent" | "marketingConsent" | "name";
-type ChatApi = { (command: ChatCommand, value?: boolean | string): void; _?: [ChatCommand, (boolean | string)?][] };
+type ChatCommand = "chat:show" | "chat:hide" | "chat:close" | "analyticsConsent" | "marketingConsent";
+type ChatApi = { (command: ChatCommand, value?: boolean): void; _?: [ChatCommand, boolean?][] };
 type Runtime = { owner: string; leases: Set<symbol>; started: boolean; revoked: boolean; signingOut?: boolean; cleanup?: ReturnType<typeof setTimeout> };
 
 declare global {
@@ -14,17 +14,8 @@ declare global {
   }
 }
 
-function call(command: ChatCommand, value?: boolean | string) {
+function call(command: ChatCommand, value?: boolean) {
   try { window.smartsupp?.(command, value); } catch { /* Live chat must never break ticket support or sign-out. */ }
-}
-
-/** Called only by the explicit client preference form; grants are never restored automatically. */
-export function setSmartsuppConsent(analytics: boolean, marketing: boolean, profileName?: string) {
-  const runtime = window.__custodialLiveChat;
-  if (!runtime?.started || runtime.revoked || !runtime.leases.size || window.location.pathname !== "/dashboard") return;
-  call("analyticsConsent", analytics === true);
-  call("marketingConsent", marketing === true);
-  if (profileName?.trim()) call("name", profileName.trim().slice(0, 100));
 }
 
 /** Clear only this website's Smartsupp identity; Supabase storage is untouched. */
@@ -66,6 +57,8 @@ function startSmartsupp(runtime: Runtime) {
   const queue: ChatApi = (...args) => { queue._!.push(args); };
   queue._ = [];
   window.smartsupp = queue;
+  // Chat only: do not grant optional tracking or add a custom page tracker.
+  // Smartsupp's account-level Cookie consent setting must remain enabled.
   call("analyticsConsent", false);
   call("marketingConsent", false);
   const script = document.createElement("script");

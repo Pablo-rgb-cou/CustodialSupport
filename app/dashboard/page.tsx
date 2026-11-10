@@ -1124,7 +1124,7 @@ Loading your dashboard...
 return (
 <main ref={clientChatShellRef} data-client-conversation-open={isTicketChatOpen ? "true" : undefined} style={isTicketChatOpen ? { top: "var(--client-chat-top, 0px)", height: "var(--client-chat-height, 100dvh)" } : undefined} className={`${isTicketChatOpen ? "fixed inset-x-0 min-h-0 overflow-hidden" : "min-h-screen"} bg-[#020a14] text-white selection:bg-cyan-300/25 selection:text-cyan-50`}>
 {smartsuppAuthorized && !authLoading && !signingOut && !authCheckError && (
-  <SmartsuppChat key={currentUserId} userId={currentUserId} profileName={userName} hidden={isTicketChatOpen || mobileMenuOpen || showTicketForm || activeSection === "Settings" || Boolean(popupNotification || selectedNotification || ticketPhotoViewerUrl)} />
+  <SmartsuppChat key={currentUserId} userId={currentUserId} hidden={isTicketChatOpen || mobileMenuOpen || showTicketForm || activeSection === "Settings" || Boolean(popupNotification || selectedNotification || ticketPhotoViewerUrl)} />
 )}
 <div className={`relative isolate flex ${isTicketChatOpen ? "h-full min-h-0 overflow-hidden" : "min-h-screen overflow-x-clip"} bg-[radial-gradient(ellipse_at_72%_0%,rgba(14,165,233,0.14),transparent_34%),radial-gradient(ellipse_at_4%_56%,rgba(8,145,178,0.09),transparent_30%),linear-gradient(135deg,#020a14_0%,#07182a_48%,#020a14_100%)]`}>
 {/* Sidebar */}
