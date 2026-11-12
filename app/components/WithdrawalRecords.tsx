@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import WithdrawalDemoToken, { type WithdrawalPreviewState } from "./WithdrawalDemoToken";
+import { useWithdrawalPreviewStatuses } from "../../lib/use-withdrawal-preview-statuses";
 import CryptoAssetIcon, { getCryptoAssetName } from "./CryptoAssetIcon";
 
 export type WithdrawalRecord = {
@@ -82,7 +84,8 @@ export function CopyValue({ value, label }: { value: string; label: string }) {
   </div>;
 }
 
-function WithdrawalDetails({ record, onClose }: { record: WithdrawalRecord; onClose: () => void }) {
+function WithdrawalDetails({ record, onClose, listPreviewStatus }: { record: WithdrawalRecord; onClose: () => void; listPreviewStatus?: WithdrawalRecord["status"] }) {
+  const [preview, setPreview] = useState<WithdrawalPreviewState>({ active: false, status: null });
   const dialogRef = useRef<HTMLDialogElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -135,7 +138,7 @@ function WithdrawalDetails({ record, onClose }: { record: WithdrawalRecord; onCl
           </div>
         </div>
         <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-[#061323]/40 px-3.5 py-3 sm:px-4">
-          <span className="text-xs font-medium text-slate-400">Current status</span><WithdrawalStatus status={record.status} />
+          <span className="text-xs font-medium text-slate-400">Current status</span><WithdrawalStatus status={preview.status ?? listPreviewStatus ?? record.status} />
         </div>
         <table className="w-full table-fixed border-collapse text-sm">
           <caption className="sr-only">Full recorded details for this withdrawal</caption>
@@ -145,9 +148,9 @@ function WithdrawalDetails({ record, onClose }: { record: WithdrawalRecord; onCl
             <tr><th scope="row" className="py-4 pr-3 text-left align-top text-xs font-medium leading-6 text-slate-400">Crypto quantity</th><td className="break-words py-4 text-right text-xs leading-6 text-slate-200 [overflow-wrap:anywhere] sm:text-sm">{hasCryptoAmount(record) ? formatAmount(record) : "Not provided"}</td></tr>
             <tr><th scope="row" className="py-4 pr-3 text-left align-top text-xs font-medium leading-6 text-slate-400">Fiat amount</th><td className="py-4 text-right text-xs leading-6 text-slate-200 sm:text-sm">{formatFiat(record)} <span className="text-slate-500">{record.currency}</span></td></tr>
             <tr><th scope="row" className="py-4 pr-3 text-left align-top text-xs font-medium leading-6 text-slate-400">Recipient wallet</th><td className="py-4">{record.walletAddress ? <CopyValue value={record.walletAddress} label="Wallet address" /> : <span className="block text-right text-xs leading-6 text-slate-500">Not provided</span>}</td></tr>
-            <tr><th scope="row" className="py-4 pr-3 text-left align-top text-xs font-medium leading-6 text-slate-400">Record reference</th><td className="py-4"><CopyValue value={record.reference} label="Record reference" /></td></tr>
           </tbody>
         </table>
+        <WithdrawalDemoToken withdrawalId={record.id} showNotice={false} onPreviewChange={setPreview} />
       </div>
     </div>
   </dialog>;
@@ -156,20 +159,24 @@ function WithdrawalDetails({ record, onClose }: { record: WithdrawalRecord; onCl
 export default function WithdrawalRecords({ records, loading, error }: { records: WithdrawalRecord[]; loading: boolean; error: string }) {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const previewStatuses = useWithdrawalPreviewStatuses(records.map(record => record.id));
   const closeDetails = useCallback(() => setSelectedId(null), []);
   const selected = records.find((record) => record.id === selectedId) ?? null;
   const filteredRecords = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const matches = records.filter((record) => `${record.reference} ${record.asset ?? ""} ${record.walletAddress ?? ""} ${record.status}`.toLowerCase().includes(query));
+    const matches = records.map(record => previewStatuses[record.id] ? { ...record, status: previewStatuses[record.id] } : record).filter((record) => `${record.reference} ${record.asset ?? ""} ${record.walletAddress ?? ""} ${record.status}`.toLowerCase().includes(query));
     matches.sort((a, b) => (Date.parse(b.createdAtISO) || 0) - (Date.parse(a.createdAtISO) || 0) || a.id.localeCompare(b.id));
     return matches;
-  }, [records, search]);
+  }, [records, search, previewStatuses]);
 
   return <>
     <section aria-labelledby="withdrawal-records-heading" className="overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[linear-gradient(145deg,#0c1e31,#071424)] shadow-[0_16px_44px_rgba(0,0,0,0.18)]">
       <header className="flex flex-col gap-3 border-b border-white/[0.07] p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-5">
         <div>
-          <div className="flex items-center gap-2.5"><h2 id="withdrawal-records-heading" className="text-base font-semibold text-white sm:text-lg">Withdrawal records</h2><span className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-400">{records.length}</span></div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 id="withdrawal-records-heading" className="text-base font-semibold text-white sm:text-lg">Withdrawal records</h2>
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-400">{records.length}</span>
+          </div>
           <p className="mt-1 text-xs leading-5 text-slate-400">Select a withdrawal to view its full details.</p>
         </div>
         <div className="relative w-full sm:max-w-[280px]">
@@ -177,13 +184,13 @@ export default function WithdrawalRecords({ records, loading, error }: { records
           <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search withdrawal records" placeholder="Search asset, reference, status…" className="min-h-11 w-full rounded-xl border border-white/[0.08] bg-[#04101e]/65 py-2.5 pl-9 pr-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/40 focus:ring-2 focus:ring-cyan-300/10" />
         </div>
       </header>
-      <div tabIndex={0} role="region" aria-label="Withdrawal records, scroll to view more" className="scrollbar-hide h-[27.5rem] overflow-y-auto overscroll-contain outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300/50 sm:h-[30rem]">
+      <div tabIndex={0} role="region" aria-label="Withdrawal records, scroll to view more" className="scrollbar-hide h-[27.5rem] overflow-y-auto overscroll-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300/50 sm:h-[30rem]">
         {loading ? <div className="grid h-full place-items-center px-5"><p role="status" className="text-center text-sm text-slate-400">Loading your withdrawal records…</p></div> : error ? <div className="grid h-full place-items-center px-5"><p role="alert" className="text-center text-sm text-rose-300">{error}</p></div> : filteredRecords.length === 0 ? <div className="flex h-full flex-col items-center justify-center px-5 text-center"><p className="text-sm font-medium text-slate-200">{search ? "No matching withdrawals" : "No withdrawals yet"}</p><p className="mt-1 text-xs text-slate-500">{search ? "Try a different asset, reference, or status." : "Your withdrawal activity will appear here."}</p></div> : (
           <ul className="min-h-full px-4 sm:px-6">
             {filteredRecords.map((record) => <li key={record.id} className="h-[5.5rem] border-b border-white/[0.075] sm:h-24">
               <button type="button" onClick={() => setSelectedId(record.id)} aria-haspopup="dialog" aria-label={`View ${record.asset ?? record.currency} withdrawal details, ${formatAmount(record)}, ${record.status}, ${formatDate(record.createdAtISO)}`} className="group grid h-full w-full grid-cols-[40px_minmax(0,1fr)_minmax(0,1.1fr)] items-center gap-2.5 rounded-lg text-left transition hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300/60 sm:grid-cols-[44px_minmax(0,1fr)_minmax(0,1fr)] sm:gap-4">
                 <span className="relative"><CryptoAssetIcon symbol={record.asset} className="size-10 sm:size-11" /><span aria-hidden="true" className="absolute -bottom-0.5 -right-0.5 grid size-4 place-items-center rounded-full border-2 border-[#0a192b] bg-[#26384c] text-slate-200"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4 12 12 4M4 4h8v8" /></svg></span></span>
-                <span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-white sm:text-sm">{getCryptoAssetName(record.asset)}</span><span className="mt-1 block truncate font-mono text-[10px] text-slate-500 sm:text-[11px]">{shorten(record.walletAddress || record.reference)}</span><time dateTime={record.createdAtISO} className="mt-1 block truncate text-[10px] text-slate-500">{formatDate(record.createdAtISO)}</time></span>
+                <span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-white sm:text-sm">{getCryptoAssetName(record.asset)}</span><span className="mt-1 block truncate font-mono text-[10px] text-slate-500 sm:text-[11px]">{record.walletAddress ? shorten(record.walletAddress) : "Wallet not provided"}</span><time dateTime={record.createdAtISO} className="mt-1 block truncate text-[10px] text-slate-500">{formatDate(record.createdAtISO)}</time></span>
                 <span className="min-w-0 text-right"><span className="block truncate text-[13px] font-semibold leading-5 tabular-nums tracking-tight text-slate-100 sm:text-sm" title={formatAmount(record)}>{formatAmount(record)}</span>{hasCryptoAmount(record) ? <span className="mt-0.5 block truncate text-[10px] tabular-nums text-slate-500 sm:text-[11px]">{formatFiat(record)}</span> : null}<span className={`mt-1 inline-flex items-center gap-1 text-[10px] font-medium ${statusTones[record.status].split(" ")[0]}`}><span aria-hidden="true" className="size-1 rounded-full bg-current"/>{record.status}</span></span>
               </button>
             </li>)}
@@ -191,6 +198,6 @@ export default function WithdrawalRecords({ records, loading, error }: { records
         )}
       </div>
     </section>
-    {selected ? <WithdrawalDetails key={selected.id} record={selected} onClose={closeDetails} /> : null}
+    {selected ? <WithdrawalDetails key={selected.id} record={selected} listPreviewStatus={previewStatuses[selected.id]} onClose={closeDetails} /> : null}
   </>;
 }

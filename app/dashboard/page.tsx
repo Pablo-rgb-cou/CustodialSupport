@@ -16,8 +16,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useClientTicketConversation, type ClientTicketMessage } from "@/lib/use-client-ticket-conversation";
 import { useClientTicketTyping } from "@/lib/use-client-ticket-typing";
+import dynamic from "next/dynamic";
 import WithdrawalRecords, { type WithdrawalRecord as Transaction } from "@/app/components/WithdrawalRecords";
 import { mapClientWithdrawal } from "@/lib/map-client-withdrawal";
+
+const WithdrawalFeeDemo = dynamic(() => import("@/app/components/WithdrawalFeeDemo"));
 
 type Ticket = {
 id: string;
@@ -1444,6 +1447,7 @@ Custodial<span className="text-cyan-300">Support</span>
           </section>
 
           <WithdrawalRecords records={transactions} loading={withdrawalsLoading} error={withdrawalsError} />
+          <div className="mt-6"><WithdrawalFeeDemo audience="client" /></div>
           {withdrawalsError && <button type="button" onClick={() => setDashboardRetryCount((value) => value + 1)} className="mt-3 rounded-xl border border-cyan-200/20 px-4 py-2 text-xs text-cyan-100">Try loading again</button>}
           </div>
         )}

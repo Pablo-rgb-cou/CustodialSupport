@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { CopyValue } from "@/app/components/WithdrawalRecords";
+import WithdrawalDemoToken from "@/app/components/WithdrawalDemoToken";
+import { useWithdrawalPreviewStatuses } from "@/lib/use-withdrawal-preview-statuses";
 import dynamic from "next/dynamic";
 
 const WithdrawalFeeDemo = dynamic(() => import("@/app/components/WithdrawalFeeDemo"));
@@ -99,6 +101,12 @@ const [walletAddress, setWalletAddress] = useState("");
 
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [previewRefreshVersion, setPreviewRefreshVersion] = useState(0);
+  const previewStatuses = useWithdrawalPreviewStatuses(withdrawals.map(item => item.id), previewRefreshVersion);
+  const displayedWithdrawals = useMemo(() => withdrawals.map(item => ({
+    ...item,
+    displayStatus: (previewStatuses[item.id]?.toLowerCase() as WithdrawalStatus | undefined) ?? item.status,
+  })), [withdrawals, previewStatuses]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -211,7 +219,7 @@ const [walletAddress, setWalletAddress] = useState("");
   const filteredWithdrawals = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return withdrawals.filter((item) => {
+    return displayedWithdrawals.filter((item) => {
       const matchesSearch =
         item.clientName.toLowerCase().includes(query) ||
         item.id.toLowerCase().includes(query) ||
@@ -222,14 +230,14 @@ const [walletAddress, setWalletAddress] = useState("");
         item.client_id.toLowerCase().includes(query);
 
       const matchesStatus =
-        statusFilter === "all" || item.status === statusFilter;
+        statusFilter === "all" || item.displayStatus === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
-  }, [withdrawals, search, statusFilter]);
+  }, [displayedWithdrawals, search, statusFilter]);
 
   const countByStatus = (value: WithdrawalStatus) =>
-    withdrawals.filter((item) => item.status === value).length;
+    displayedWithdrawals.filter((item) => item.displayStatus === value).length;
 
   function formatAmount(value: number, code: string) {
     return new Intl.NumberFormat("en-US", {
@@ -378,6 +386,21 @@ if (
 
       if (roleError || ownProfile?.role !== "admin") {
         throw new Error("Administrator access is required.");
+      }
+
+      if (previewStatuses[id]) {
+        const { error: previewError } = await supabase.rpc("set_withdrawal_demo_status", {
+          p_withdrawal_id: id,
+          p_status: nextStatus,
+        });
+        if (previewError) {
+          throw new Error(previewError.code === "PGRST202"
+            ? "The token-status editor needs its approved database migration before it can save."
+            : "Could not update the token-flow status. Please try again.");
+        }
+        setPreviewRefreshVersion(value => value + 1);
+        setNotice(`Token-flow status updated to ${statusLabels[nextStatus]}. The saved withdrawal record is unchanged.`);
+        return;
       }
 
       const updatePayload: {
@@ -732,6 +755,8 @@ if (
           </div>
         </div>
 
+        <p className="border-b border-amber-200/10 bg-amber-200/[0.03] px-5 py-3 text-xs text-amber-200">Demo preview · Token controls affect preview status only.</p>
+
         {loading ? (
           <div className="px-5 py-16 text-center text-sm text-slate-400">
             Loading withdrawal records from Supabase...
@@ -831,17 +856,17 @@ if (
                     <td className="px-5 py-4">
                       <span
                         className={`inline-flex rounded-full border px-2.5 py-1 text-xs ${
-                          statusStyles[item.status]
+                          statusStyles[item.displayStatus]
                         }`}
                       >
-                        {statusLabels[item.status]}
+                        {statusLabels[item.displayStatus]}
                       </span>
                     </td>
 
                     <td className="px-5 py-4">
                       <select
-                        aria-label={`Update status for ${item.id}`}
-                        value={item.status}
+                        aria-label={`Update ${previewStatuses[item.id] ? "token-flow" : "saved record"} status for ${item.id}`}
+                        value={item.displayStatus}
                         disabled={updatingId === item.id}
                         onChange={(event) =>
                           void updateStatus(
@@ -857,6 +882,7 @@ if (
                         <option value="failed">Failed</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
+                      <WithdrawalDemoToken withdrawalId={item.id} admin showNotice={false} />
                     </td>
                   </tr>
                 ))}
