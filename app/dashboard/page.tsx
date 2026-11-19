@@ -46,6 +46,7 @@ const ticketPhotoExtensions: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
   "image/gif": "gif",
+  "application/pdf": "pdf",
 };
 const maxTicketPhotoSize = 5 * 1024 * 1024;
 
@@ -621,17 +622,18 @@ function handleTicketPhotoSelection(event: React.ChangeEvent<HTMLInputElement>) 
   event.currentTarget.value = "";
   if (!file) return;
 
-  if (!ticketPhotoExtensions[file.type]) {
-    setFormError("Choose a JPG, PNG, WebP, or GIF photo.");
+  const isPdfWithoutMime = !file.type && /\.pdf$/i.test(file.name);
+  if (!Object.hasOwn(ticketPhotoExtensions, file.type) && !isPdfWithoutMime) {
+    setFormError("Choose a JPG, PNG, WebP, GIF, or PDF file.");
     return;
   }
   if (file.size > maxTicketPhotoSize) {
-    setFormError("Photos must be 5 MB or smaller.");
+    setFormError("Attachments must be 5 MB or smaller.");
     return;
   }
 
   setFormError("");
-  setTicketReplyPhoto(file);
+  setTicketReplyPhoto(isPdfWithoutMime ? new File([file], file.name, { type: "application/pdf" }) : file);
 }
 
 async function handleClientTicketReply(event: React.FormEvent<HTMLFormElement>) {
@@ -657,9 +659,13 @@ async function handleClientTicketReply(event: React.FormEvent<HTMLFormElement>) 
     let photoPath: string | null = null;
 
     if (photo) {
-      const uploadPhoto = await prepareTicketPhoto(photo);
+      const isPdf = photo.type === "application/pdf";
+      if (isPdf && (await photo.slice(0, 5).text()) !== "%PDF-") {
+        throw new Error("Choose a valid PDF file.");
+      }
+      const uploadPhoto = isPdf ? photo : await prepareTicketPhoto(photo);
       const extension = ticketPhotoExtensions[uploadPhoto.type];
-      if (!extension) throw new Error("Choose a supported photo file.");
+      if (!extension) throw new Error("Choose a supported attachment.");
 
       photoPath = `${selectedTicketId}/${user.id}/${crypto.randomUUID()}.${extension}`;
       const { error: uploadError } = await supabase.storage
@@ -671,7 +677,7 @@ async function handleClientTicketReply(event: React.FormEvent<HTMLFormElement>) 
         });
 
       if (uploadError) {
-        throw new Error(`The photo could not be uploaded: ${uploadError.message}`);
+        throw new Error(`The attachment could not be uploaded: ${uploadError.message}`);
       }
     }
 
@@ -692,7 +698,7 @@ async function handleClientTicketReply(event: React.FormEvent<HTMLFormElement>) 
           .from("ticket-attachments")
           .remove([photoPath]);
         if (cleanupError) {
-          console.warn("Could not remove the unused ticket photo:", cleanupError.message);
+          console.warn("Could not remove the unused ticket attachment:", cleanupError.message);
         }
       }
       throw new Error(`Your reply could not be sent: ${insertError.message}`);
@@ -986,7 +992,7 @@ const recentActivity = [
       id: "message-" + item.id,
       kind: "message" as const,
       title: item.sender_id === currentUserId ? "You replied to support" : "Support replied",
-      detail: (ticket?.subject ?? "Support ticket") + " · " + (parsed.text.trim() || (parsed.photoPath ? "Shared a photo" : "Message sent")),
+      detail: (ticket?.subject ?? "Support ticket") + " · " + (parsed.text.trim() || (parsed.photoPath ? "Shared an attachment" : "Message sent")),
       createdAt: item.created_at,
       section: "Support tickets",
     };
@@ -1760,8 +1766,12 @@ Custodial<span className="text-cyan-300">Support</span>
                               {content.photoPath && (
                                 !photoBelongsToTicket ? (
                                   <p className="mt-2 text-xs text-slate-400">
-                                    This photo is unavailable.
+                                    This attachment is unavailable.
                                   </p>
+                                ) : photoUrl && content.photoPath.endsWith(".pdf") ? (
+                                  <a href={photoUrl + "&download=ticket-attachment.pdf"} className="mt-2 inline-flex rounded-lg border border-cyan-200/20 px-3 py-2 text-sm text-cyan-100 hover:bg-cyan-200/10">
+                                    Download attached PDF
+                                  </a>
                                 ) : photoUrl ? (
                                   <button
                                     type="button"
@@ -1781,11 +1791,11 @@ Custodial<span className="text-cyan-300">Support</span>
                                   </button>
                                 ) : content.photoPath in ticketPhotoUrls ? (
                                   <p className="mt-2 text-xs text-slate-400">
-                                    This photo is unavailable.
+                                    This attachment is unavailable.
                                   </p>
                                 ) : (
                                   <p className="mt-2 text-xs text-slate-400">
-                                    Loading attached photo…
+                                    Loading attachment…
                                   </p>
                                 )
                               )}
@@ -1806,10 +1816,10 @@ Custodial<span className="text-cyan-300">Support</span>
                     <input
                       ref={ticketPhotoInputRef}
                       type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.pdf"
                       className="hidden"
                       onChange={handleTicketPhotoSelection}
-                      aria-label="Choose a photo attachment"
+                      aria-label="Choose a photo or PDF"
                     />
                     {ticketReplyPhoto && (
                       <div className="mb-2 flex min-w-0 items-center gap-2 text-xs text-slate-400">
@@ -1818,7 +1828,7 @@ Custodial<span className="text-cyan-300">Support</span>
                       </div>
                     )}
                     <div className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-white/[0.11] bg-[#17212b] px-3 shadow-inner shadow-black/20 transition focus-within:border-cyan-200/40 focus-within:ring-2 focus-within:ring-cyan-300/10">
-                      <button type="button" onClick={() => ticketPhotoInputRef.current?.click()} disabled={sendingTicketReply} aria-label="Attach a photo" title="Attach a photo" className="grid size-10 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-white/[0.06] hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/50 disabled:cursor-not-allowed disabled:opacity-50">
+                      <button type="button" onClick={() => ticketPhotoInputRef.current?.click()} disabled={sendingTicketReply} aria-label="Attach a photo or PDF" title="Attach a photo or PDF" className="grid size-10 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-white/[0.06] hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/50 disabled:cursor-not-allowed disabled:opacity-50">
                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="size-6" stroke="currentColor" strokeWidth="1.8">
                           <path strokeLinecap="round" strokeLinejoin="round" d="m7.5 12.75 6.97-6.97a3 3 0 1 1 4.24 4.24l-8.03 8.03a4.5 4.5 0 0 1-6.36-6.36l8.13-8.13" />
                         </svg>

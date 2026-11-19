@@ -1128,8 +1128,12 @@ export default function AdminTicketsPage() {
                             {content.photoPath && (
                               !photoBelongsToTicket ? (
                                 <p className="mt-2 text-xs text-slate-400">
-                                  This photo is unavailable.
+                                  This attachment is unavailable.
                                 </p>
+                              ) : photoUrl && content.photoPath.endsWith(".pdf") ? (
+                                <a href={photoUrl + "&download=ticket-attachment.pdf"} className="mt-2 inline-flex rounded-lg border border-cyan-200/20 px-3 py-2 text-sm text-cyan-100 hover:bg-cyan-200/10">
+                                  Download attached PDF
+                                </a>
                               ) : photoUrl ? (
                                 <button
                                   type="button"
@@ -1149,11 +1153,11 @@ export default function AdminTicketsPage() {
                                 </button>
                               ) : content.photoPath in ticketPhotoUrls ? (
                                 <p className="mt-2 text-xs text-slate-400">
-                                  This photo is unavailable.
+                                  This attachment is unavailable.
                                 </p>
                               ) : (
                                 <p className="mt-2 text-xs text-slate-400">
-                                  Loading attached photo…
+                                  Loading attachment…
                                 </p>
                               )
                             )}
